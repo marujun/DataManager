@@ -209,7 +209,7 @@
 
 + (NSMutableDictionary *)getRequestBodyWithParams:(NSDictionary *)params
 {
-    NSMutableDictionary *requestBody = [params mutableCopy];
+    NSMutableDictionary *requestBody = params?[params mutableCopy]:[[NSMutableDictionary alloc] init];
     
     for (NSString *key in [params allKeys]){
         id value = [params objectForKey:key];
