@@ -69,7 +69,7 @@
 - (void)setImageURL:(NSString *)url callback:(void(^)(UIImage *image))callback
 {
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        self.image = image;
+        image ? self.image=image : nil;
         callback ? callback(image) : nil;
     }];
 }
@@ -91,7 +91,7 @@
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
 {
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        [self setImage:image forState:state];
+        image ? [self setImage:image forState:state] : nil;
         callback ? callback(image) : nil;
     }];
 }
@@ -110,7 +110,7 @@
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
 {
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        [self setBackgroundImage:image forState:state];
+        image ? [self setBackgroundImage:image forState:state] : nil;
         callback ? callback(image) : nil;
     }];
 }
