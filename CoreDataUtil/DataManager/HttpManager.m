@@ -26,6 +26,36 @@
     
     return outputString;
 }
+- (id)object
+{
+    id object = nil;
+    @try {
+        NSData *data = [self dataUsingEncoding:NSUTF8StringEncoding];;
+        object = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"%s [Line %d] JSON字符串转换成对象出错了-->\n%@",__PRETTY_FUNCTION__, __LINE__,exception);
+    }
+    @finally {
+    }
+    return object;
+}
+@end
+@implementation NSObject (HttpManager)
+- (NSString *)json
+{
+    NSString *jsonStr = @"";
+    @try {
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:self options:0 error:nil];
+        jsonStr = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"%s [Line %d] 对象转换成JSON字符串出错了-->\n%@",__PRETTY_FUNCTION__, __LINE__,exception);
+    }
+    @finally {
+    }
+    return jsonStr;
+}
 @end
 
 @implementation HttpManager
@@ -170,7 +200,7 @@
     
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     NSMutableURLRequest *request = [serializer requestWithMethod:@"GET" URLString:url parameters:params error:nil];
-                                    
+    
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     operation.responseSerializer.acceptableContentTypes = nil;
     
