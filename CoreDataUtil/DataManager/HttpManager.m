@@ -246,6 +246,9 @@
         if ([value isKindOfClass:[NSDate class]]) {
             [requestBody setValue:@([value timeIntervalSince1970]*1000) forKey:key];
         }
+        if ([value isKindOfClass:[NSDictionary class]] || [value isKindOfClass:[NSArray class]]) {
+            [requestBody setValue:[value json] forKey:key];
+        }
     }
     
     NSString *token = [[NSUserDefaults standardUserDefaults] objectForKey:@"token"];
