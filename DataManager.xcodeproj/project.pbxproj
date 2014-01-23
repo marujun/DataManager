@@ -44,6 +44,7 @@
 		0AEAE9C1189155DA0055EADB /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE9C0189155DA0055EADB /* CFNetwork.framework */; };
 		0AEAE9C3189155E40055EADB /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE9C2189155E40055EADB /* SystemConfiguration.framework */; };
 		0AEAE9C5189155ED0055EADB /* CoreData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE9C4189155ED0055EADB /* CoreData.framework */; };
+		0AEAE9C8189170500055EADB /* default.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 0AEAE9C7189170500055EADB /* default.jpg */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,6 +120,7 @@
 		0AEAE9C0189155DA0055EADB /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		0AEAE9C2189155E40055EADB /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		0AEAE9C4189155ED0055EADB /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		0AEAE9C7189170500055EADB /* default.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = default.jpg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +203,7 @@
 		0AEAE94F1891553F0055EADB /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				0AEAE9C7189170500055EADB /* default.jpg */,
 				0AEAE9501891553F0055EADB /* DataManager-Info.plist */,
 				0AEAE9511891553F0055EADB /* InfoPlist.strings */,
 				0AEAE9541891553F0055EADB /* main.m */,
@@ -379,6 +382,7 @@
 				0AEAE9611891553F0055EADB /* Images.xcassets in Resources */,
 				0AEAE9531891553F0055EADB /* InfoPlist.strings in Resources */,
 				0AEAE95C1891553F0055EADB /* Main.storyboard in Resources */,
+				0AEAE9C8189170500055EADB /* default.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -639,6 +643,7 @@
 				0AEAE9791891553F0055EADB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		0AEAE97A1891553F0055EADB /* Build configuration list for PBXNativeTarget "DataManagerTests" */ = {
 			isa = XCConfigurationList;
@@ -647,6 +652,7 @@
 				0AEAE97C1891553F0055EADB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 

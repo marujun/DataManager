@@ -2,8 +2,8 @@
 //  ImageCache.m
 //  CoreDataUtil
 //
-//  Created by 马汝军 on 14-1-18.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by marujun on 14-1-18.
+//  Copyright (c) 2014年 jizhi. All rights reserved.
 //
 
 #import "ImageCache.h"
@@ -62,8 +62,10 @@
 }
 - (void)setImageURL:(NSString *)url defaultImage:(UIImage *)defaultImage
 {
+    defaultImage ? self.image=defaultImage : nil;
+    
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        self.image = image?image:defaultImage;
+        image ? self.image=image : nil;
     }];
 }
 - (void)setImageURL:(NSString *)url callback:(void(^)(UIImage *image))callback
@@ -84,8 +86,10 @@
 }
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
 {
+    defaultImage ? [self setImage:defaultImage forState:state] : nil;
+    
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        [self setImage:image?image:defaultImage forState:state];
+        image ? [self setImage:image forState:state] : nil;
     }];
 }
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
@@ -103,8 +107,10 @@
 }
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
 {
+    defaultImage ? [self setBackgroundImage:defaultImage forState:state] : nil;
+    
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        [self setBackgroundImage:image?image:defaultImage forState:state];
+        image ? [self setBackgroundImage:image forState:state] : nil;
     }];
 }
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback

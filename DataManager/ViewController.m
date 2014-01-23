@@ -55,13 +55,13 @@
     
     //设置UIImageView的图片，下载失败则使用默认图片
 //    UIImageView *imageView = [[UIImageView alloc] initWithFrame:self.view.bounds];
-//    [imageView setImageURL:url defaultImage:[UIImage imageNamed:@"default.png"]];
+//    [imageView setImageURL:url defaultImage:[UIImage imageNamed:@"default.jpg"]];
 //    imageView.contentMode = UIViewContentModeScaleAspectFit;
 //    [self.view addSubview:imageView];
     
     //设置UIButton的图片，下载失败则使用默认图片
     UIButton *button = [[UIButton alloc] initWithFrame:self.view.bounds];
-    [button setImageURL:url forState:UIControlStateNormal defaultImage:[UIImage imageNamed:@"default.png"]];
+    [button setImageURL:url forState:UIControlStateNormal defaultImage:[UIImage imageNamed:@"default.jpg"]];
     [self.view addSubview:button];
 }
 

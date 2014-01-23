@@ -208,22 +208,31 @@
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     operation.responseSerializer.acceptableContentTypes = nil;
     
-    operation.outputStream=[[NSOutputStream alloc] initToFileAtPath:filePath append:NO];
+    NSString *tmpPath = [filePath stringByAppendingString:@".tmp"];
+    operation.outputStream=[[NSOutputStream alloc] initToFileAtPath:tmpPath append:NO];
     
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
         NSArray *mimeTypeArray = @[@"text/html", @"application/json"];
+        NSError *moveError = nil;
         if ([mimeTypeArray containsObject:operation.response.MIMEType]) {
             //返回的是json格式数据
-            responseObject = [NSData dataWithContentsOfFile:filePath];
+            responseObject = [NSData dataWithContentsOfFile:tmpPath];
             responseObject = [NSJSONSerialization JSONObjectWithData:responseObject options:2 error:nil];
-            [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+            [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
             ALog(@"get responseObject:  %@",responseObject);
+        }else{
+            [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+            [[NSFileManager defaultManager] moveItemAtPath:tmpPath toPath:filePath error:&moveError];
         }
-        if (complete) {
+        
+        if (complete && !moveError) {
             complete(true,responseObject);
+        }else{
+            complete(false,responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         ALog(@"get error :  %@",error);
+        [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
         if (complete) {
             complete(false,nil);
         }

@@ -2,8 +2,8 @@
 //  DataManager.h
 //  CoreDataUtil
 //
-//  Created by 马汝军 on 14-1-17.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by marujun on 14-1-17.
+//  Copyright (c) 2014年 jizhi. All rights reserved.
 //
 
 #import "ImageCache.h"
