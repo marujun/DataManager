@@ -200,10 +200,10 @@
                                        complete:(void (^)(BOOL successed, NSDictionary *response))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
-    ALog(@"post request url:  %@  \npost params:  %@",url,params);
     
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     NSMutableURLRequest *request = [serializer requestWithMethod:@"GET" URLString:url parameters:params error:nil];
+    ALog(@"get request url: %@",[request.URL.absoluteString decode]);
     
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     operation.responseSerializer.acceptableContentTypes = nil;
@@ -218,12 +218,12 @@
             responseObject = [NSJSONSerialization JSONObjectWithData:responseObject options:2 error:nil];
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         }
-        ALog(@"post responseObject:  %@",responseObject);
+        ALog(@"get responseObject:  %@",responseObject);
         if (complete) {
             complete(true,responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        ALog(@"post error :  %@",error);
+        ALog(@"get error :  %@",error);
         if (complete) {
             complete(false,nil);
         }
