@@ -26,6 +26,16 @@
     
     return outputString;
 }
+- (NSString *)encode
+{
+    NSString *outputStr = (NSString *)
+    CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
+                                                              (CFStringRef)self,
+                                                              NULL,
+                                                              NULL,
+                                                              kCFStringEncodingUTF8));
+    return outputStr;
+}
 - (NSString *)decode
 {
     NSMutableString *outputStr = [NSMutableString stringWithString:self];

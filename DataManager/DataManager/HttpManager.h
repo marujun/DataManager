@@ -13,6 +13,7 @@
 
 @interface NSString (HttpManager)
 - (NSString *)md5;
+- (NSString *)encode;
 - (NSString *)decode;
 - (NSString *)object;
 @end
