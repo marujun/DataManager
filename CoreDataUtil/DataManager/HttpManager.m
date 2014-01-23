@@ -26,6 +26,12 @@
     
     return outputString;
 }
+- (NSString *)decode
+{
+    NSMutableString *outputStr = [NSMutableString stringWithString:self];
+    [outputStr replaceOccurrencesOfString:@"+" withString:@" " options:NSLiteralSearch range:NSMakeRange(0, [outputStr length])];
+    return [outputStr stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+}
 - (id)object
 {
     id object = nil;
@@ -87,12 +93,12 @@
     manager.responseSerializer.acceptableContentTypes = nil;
     
     [manager GET:url parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        ALog(@"get request url:  %@  \nget responseObject:  %@",operation.request.URL,responseObject);
+        ALog(@"get request url:  %@  \nget responseObject:  %@",[operation.request.URL.absoluteString decode], responseObject);
         if (complete) {
             complete(true,responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        ALog(@"get request url:  %@ \nget error :  %@",operation.request.URL,error);
+        ALog(@"get request url:  %@ \nget error :  %@",[operation.request.URL.absoluteString decode], error);
         if (complete) {
             complete(false,nil);
         }
@@ -107,14 +113,12 @@
     manager.responseSerializer.acceptableContentTypes = nil;
     
     [manager POST:url parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        ALog(@"post request url:  %@  \npost params:  %@",operation.request.URL,params);
-        ALog(@"post responseObject:  %@",responseObject);
+        ALog(@"post request url:  %@  \npost params:  %@\npost responseObject:  %@",operation.request.URL,params,responseObject);
         if (complete) {
             complete(true,responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        ALog(@"post request url:  %@  \npost params:  %@",operation.request.URL,params);
-        ALog(@"post error :  %@",error);
+        ALog(@"post request url:  %@  \npost params:  %@\npost error :  %@",operation.request.URL,params,error);
         if (complete) {
             complete(false,nil);
         }
@@ -263,6 +267,9 @@
 + (NetworkStatus)networkStatus
 {
     Reachability *reachability = [Reachability reachabilityWithHostname:@"www.apple.com"];
+    // NotReachable     - 没有网络连接
+    // ReachableViaWWAN - 移动网络(2G、3G)
+    // ReachableViaWiFi - WIFI网络
     return [reachability currentReachabilityStatus];
 }
 

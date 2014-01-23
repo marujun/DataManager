@@ -13,6 +13,7 @@
 
 @interface NSString (HttpManager)
 - (NSString *)md5;
+- (NSString *)decode;
 - (NSString *)object;
 @end
 
@@ -25,10 +26,10 @@
 + (HttpManager *)defaultManager;
 
 /*  -------判断当前的网络类型----------
-   1、NotReachable     - 没有网络连接
-   2、ReachableViaWWAN - 移动网络(2G、3G)
-   3、ReachableViaWiFi - WIFI网络
-*/
+ 1、NotReachable     - 没有网络连接
+ 2、ReachableViaWWAN - 移动网络(2G、3G)
+ 3、ReachableViaWiFi - WIFI网络
+ */
 + (NetworkStatus)networkStatus;
 
 //GET 请求
