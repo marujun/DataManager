@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 #import <CommonCrypto/CommonDigest.h>
 #import "AFNetworking.h"
+#import "Reachability.h"
 
 @interface NSString (HttpManager)
 - (NSString *)md5;
@@ -22,6 +23,13 @@
 @interface HttpManager : NSObject
 
 + (HttpManager *)defaultManager;
+
+/*  -------判断当前的网络类型----------
+   1、NotReachable     - 没有网络连接
+   2、ReachableViaWWAN - 移动网络(2G、3G)
+   3、ReachableViaWiFi - WIFI网络
+*/
++ (NetworkStatus)networkStatus;
 
 //GET 请求
 - (void)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete;

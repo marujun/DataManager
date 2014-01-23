@@ -260,4 +260,10 @@
     return requestBody;
 }
 
++ (NetworkStatus)networkStatus
+{
+    Reachability *reachability = [Reachability reachabilityWithHostname:@"www.apple.com"];
+    return [reachability currentReachabilityStatus];
+}
+
 @end
