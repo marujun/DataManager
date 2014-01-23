@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0A3BE03B18843473004EFA39"
-               BuildableName = "CoreDataUtil.app"
-               BlueprintName = "CoreDataUtil"
-               ReferencedContainer = "container:CoreDataUtil.xcodeproj">
+               BlueprintIdentifier = "0AEAE9441891553F0055EADB"
+               BuildableName = "DataManager.app"
+               BlueprintName = "DataManager"
+               ReferencedContainer = "container:DataManager.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,20 +32,20 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0A3BE05C18843473004EFA39"
-               BuildableName = "CoreDataUtilTests.xctest"
-               BlueprintName = "CoreDataUtilTests"
-               ReferencedContainer = "container:CoreDataUtil.xcodeproj">
+               BlueprintIdentifier = "0AEAE9651891553F0055EADB"
+               BuildableName = "DataManagerTests.xctest"
+               BlueprintName = "DataManagerTests"
+               ReferencedContainer = "container:DataManager.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "0A3BE03B18843473004EFA39"
-            BuildableName = "CoreDataUtil.app"
-            BlueprintName = "CoreDataUtil"
-            ReferencedContainer = "container:CoreDataUtil.xcodeproj">
+            BlueprintIdentifier = "0AEAE9441891553F0055EADB"
+            BuildableName = "DataManager.app"
+            BlueprintName = "DataManager"
+            ReferencedContainer = "container:DataManager.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </TestAction>
@@ -61,10 +61,10 @@
       <BuildableProductRunnable>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "0A3BE03B18843473004EFA39"
-            BuildableName = "CoreDataUtil.app"
-            BlueprintName = "CoreDataUtil"
-            ReferencedContainer = "container:CoreDataUtil.xcodeproj">
+            BlueprintIdentifier = "0AEAE9441891553F0055EADB"
+            BuildableName = "DataManager.app"
+            BlueprintName = "DataManager"
+            ReferencedContainer = "container:DataManager.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -79,10 +79,10 @@
       <BuildableProductRunnable>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "0A3BE03B18843473004EFA39"
-            BuildableName = "CoreDataUtil.app"
-            BlueprintName = "CoreDataUtil"
-            ReferencedContainer = "container:CoreDataUtil.xcodeproj">
+            BlueprintIdentifier = "0AEAE9441891553F0055EADB"
+            BuildableName = "DataManager.app"
+            BlueprintName = "DataManager"
+            ReferencedContainer = "container:DataManager.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

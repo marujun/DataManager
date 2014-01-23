@@ -1,9 +1,9 @@
 //
 //  ViewController.m
-//  CoreDataUtil
+//  DataManager
 //
-//  Created by 马汝军 on 14-1-13.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by 马汝军 on 14-1-23.
+//  Copyright (c) 2014年 marujun. All rights reserved.
 //
 
 #import "ViewController.h"
@@ -47,12 +47,12 @@
     NSString *url = @"http://image.tianjimedia.com/uploadImages/2013/309/43U9QN353KB7.jpg";
     
     //缓存图片
-//    [UIImage imageWithURL:url process:^(double readBytes, double totalBytes) {
-//        NSLog(@"下载进度 ： %.0f%%",100*readBytes/totalBytes);
-//    } callback:^(UIImage *image) {
-//        NSLog(@"图片下载完成！");
-//    }];
-   
+    //    [UIImage imageWithURL:url process:^(double readBytes, double totalBytes) {
+    //        NSLog(@"下载进度 ： %.0f%%",100*readBytes/totalBytes);
+    //    } callback:^(UIImage *image) {
+    //        NSLog(@"图片下载完成！");
+    //    }];
+    
     //设置UIImageView的图片，下载失败则使用默认图片
     UIImageView *imageView = [[UIImageView alloc] initWithFrame:self.view.bounds];
     [imageView setImageURL:url defaultImage:[UIImage imageNamed:@"default.png"]];

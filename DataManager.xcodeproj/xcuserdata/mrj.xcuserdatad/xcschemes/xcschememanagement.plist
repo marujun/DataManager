@@ -4,7 +4,7 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>CoreDataUtil.xcscheme</key>
+		<key>DataManager.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
@@ -12,12 +12,12 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
-		<key>0A3BE03B18843473004EFA39</key>
+		<key>0AEAE9441891553F0055EADB</key>
 		<dict>
 			<key>primary</key>
 			<true/>
 		</dict>
-		<key>0A3BE05C18843473004EFA39</key>
+		<key>0AEAE9651891553F0055EADB</key>
 		<dict>
 			<key>primary</key>
 			<true/>

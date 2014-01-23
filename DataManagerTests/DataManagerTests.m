@@ -1,18 +1,18 @@
 //
-//  CoreDataUtilTests.m
-//  CoreDataUtilTests
+//  DataManagerTests.m
+//  DataManagerTests
 //
-//  Created by 马汝军 on 14-1-13.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by 马汝军 on 14-1-23.
+//  Copyright (c) 2014年 marujun. All rights reserved.
 //
 
 #import <XCTest/XCTest.h>
 
-@interface CoreDataUtilTests : XCTestCase
+@interface DataManagerTests : XCTestCase
 
 @end
 
-@implementation CoreDataUtilTests
+@implementation DataManagerTests
 
 - (void)setUp
 {

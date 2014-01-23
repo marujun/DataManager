@@ -182,7 +182,7 @@
                                                  }];
     
     [operation setUploadProgressBlock:^(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite) {
-        ALog(@"process: %.2lld%% (%lld/%lld)",100*totalBytesWritten/totalBytesExpectedToWrite,totalBytesWritten,totalBytesExpectedToWrite);
+        NSLog(@"upload process: %.2lld%% (%lld/%lld)",100*totalBytesWritten/totalBytesExpectedToWrite,totalBytesWritten,totalBytesExpectedToWrite);
         if (process) {
             process(totalBytesWritten,totalBytesExpectedToWrite);
         }
@@ -217,8 +217,8 @@
             responseObject = [NSData dataWithContentsOfFile:filePath];
             responseObject = [NSJSONSerialization JSONObjectWithData:responseObject options:2 error:nil];
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+            ALog(@"get responseObject:  %@",responseObject);
         }
-        ALog(@"get responseObject:  %@",responseObject);
         if (complete) {
             complete(true,responseObject);
         }
@@ -230,7 +230,7 @@
     }];
     
     [operation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
-        ALog(@"process: %.2lld%% (%lld/%lld)",100*totalBytesRead/totalBytesExpectedToRead,totalBytesRead,totalBytesExpectedToRead);
+        NSLog(@"download process: %.2lld%% (%lld/%lld)",100*totalBytesRead/totalBytesExpectedToRead,totalBytesRead,totalBytesExpectedToRead);
         if (process) {
             process(totalBytesRead,totalBytesExpectedToRead);
         }

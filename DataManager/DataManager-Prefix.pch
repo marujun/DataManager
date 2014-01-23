@@ -11,9 +11,9 @@
 #endif
 
 #ifdef __OBJC__
-    #import <UIKit/UIKit.h>
-    #import <Foundation/Foundation.h>
-    #import "DataManager.h"
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import "DataManager.h"
 #endif
 
 #define WINDOW_HEIGHT [[UIScreen mainScreen] bounds].size.height
