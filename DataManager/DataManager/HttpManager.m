@@ -146,7 +146,7 @@
 - (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url
                                       params:(NSDictionary *)params
                                        files:(NSArray *)files
-                                     process:(void (^)(double writedBytes, double totalBytes))process
+                                     process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
                                     complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
@@ -206,7 +206,7 @@
 - (AFHTTPRequestOperation *)downloadFileWithUrl:(NSString *)url
                                          params:(NSDictionary *)params
                                        filePath:(NSString *)filePath
-                                        process:(void (^)(double readBytes, double totalBytes))process
+                                        process:(void (^)(int64_t readBytes, int64_t totalBytes))process
                                        complete:(void (^)(BOOL successed, NSDictionary *response))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
