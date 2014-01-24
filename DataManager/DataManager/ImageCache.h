@@ -13,14 +13,14 @@
 @interface UIImage (ImageCache)
 
 /* ********************----------*****************************
-   1、UIImage 的扩展方法，用于缓存图片；如果图片已下载则使用本地图片
-   2、下载完成之后会执行回调，并可查看下载进度
+ 1、UIImage 的扩展方法，用于缓存图片；如果图片已下载则使用本地图片
+ 2、下载完成之后会执行回调，并可查看下载进度
  ********************----------******************************/
 
 + (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback;
 
 + (void)imageWithURL:(NSString *)url
-             process:(void (^)(double readBytes, double totalBytes))process
+             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
             callback:(void(^)(UIImage *image))callback;
 
 /*通过URL获取缓存图片在本地对应的路径*/

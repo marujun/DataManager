@@ -17,7 +17,7 @@
 }
 
 + (void)imageWithURL:(NSString *)url
-             process:(void (^)(double readBytes, double totalBytes))process
+             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
             callback:(void(^)(UIImage *image))callback
 {
     NSString *filePath = [self getImagePathWithURL:url];
