@@ -47,7 +47,7 @@
     NSString *url = @"http://image.tianjimedia.com/uploadImages/2013/309/43U9QN353KB7.jpg";
     
     //缓存图片
-//    [UIImage imageWithURL:url process:^(double readBytes, double totalBytes) {
+//    [UIImage imageWithURL:url process:^(int64_t readBytes, int64_t totalBytes) {
 //        NSLog(@"下载进度 ： %.0f%%",100*readBytes/totalBytes);
 //    } callback:^(UIImage *image) {
 //        NSLog(@"图片下载完成！");
