@@ -9,6 +9,9 @@
 #import "ImageCache.h"
 #import "HttpManager.h"
 
+static NSMutableArray *downloadTaskArray;
+static BOOL isDownloading;
+
 @implementation UIImage (ImageCache)
 
 + (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback
@@ -20,10 +23,43 @@
              process:(void (^)(int64_t readBytes, int64_t totalBytes))process
             callback:(void(^)(UIImage *image))callback
 {
+    if (!downloadTaskArray) {
+        downloadTaskArray = [[NSMutableArray alloc] init];
+    }
+    NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
+    url?[task setObject:url forKey:@"url"]:nil;
+    process?[task setObject:process forKey:@"process"]:nil;
+    callback?[task setObject:callback forKey:@"callback"]:nil;
+    [downloadTaskArray addObject:task];
+    
+    [self startDownload];
+}
+
++ (void)startDownload
+{
+    if (downloadTaskArray.count && !isDownloading) {
+        NSDictionary *lastObj = [downloadTaskArray lastObject];
+        [self downloadWithURL:lastObj[@"url"] process:lastObj[@"process"] callback:lastObj[@"callback"]];
+    }
+}
+
++ (void)downloadWithURL:(NSString *)url
+                process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+               callback:(void(^)(UIImage *image))callback
+{
     NSString *filePath = [self getImagePathWithURL:url];
+    NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
+    url?[task setObject:url forKey:@"url"]:nil;
+    process?[task setObject:process forKey:@"process"]:nil;
+    callback?[task setObject:callback forKey:@"callback"]:nil;
+    isDownloading = true;
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         callback ? callback([UIImage imageWithContentsOfFile:filePath]) : nil;
+        
+        [downloadTaskArray removeObject:task];
+        isDownloading = false;
+        [self startDownload];
     }else{
         [[HttpManager defaultManager] downloadFileWithUrl:url
                                                    params:nil
@@ -37,6 +73,9 @@
                                                              callback(nil);
                                                          }
                                                      }
+                                                     [downloadTaskArray removeObject:task];
+                                                     isDownloading = false;
+                                                     [self startDownload];
                                                  }];
     }
 }
