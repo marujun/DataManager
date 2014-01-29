@@ -61,22 +61,22 @@ static BOOL isDownloading;
         isDownloading = false;
         [self startDownload];
     }else{
-        [[HttpManager defaultManager] downloadFileWithUrl:url
-                                                   params:nil
-                                                 filePath:filePath
-                                                  process:process
-                                                 complete:^(BOOL successed, NSDictionary *result) {
-                                                     if (callback) {
-                                                         if (successed && !result) {
-                                                             callback([UIImage imageWithContentsOfFile:filePath]);
-                                                         }else{
-                                                             callback(nil);
-                                                         }
+        [[HttpManager defaultManager] downloadFromUrl:url
+                                               params:nil
+                                             filePath:filePath
+                                              process:process
+                                             complete:^(BOOL successed, NSDictionary *result) {
+                                                 if (callback) {
+                                                     if (successed && !result) {
+                                                         callback([UIImage imageWithContentsOfFile:filePath]);
+                                                     }else{
+                                                         callback(nil);
                                                      }
-                                                     [downloadTaskArray removeObject:task];
-                                                     isDownloading = false;
-                                                     [self startDownload];
-                                                 }];
+                                                 }
+                                                 [downloadTaskArray removeObject:task];
+                                                 isDownloading = false;
+                                                 [self startDownload];
+                                             }];
     }
 }
 

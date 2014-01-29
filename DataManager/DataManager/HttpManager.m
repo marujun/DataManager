@@ -135,19 +135,19 @@
     }];
 }
 
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url
-                                      params:(NSDictionary *)params
-                                       files:(NSArray *)files
-                                    complete:(void (^)(BOOL successed, NSDictionary *result))complete
+- (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
+                                 params:(NSDictionary *)params
+                                  files:(NSArray *)files
+                               complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
-    return [self postRequestToUrl:url params:params files:files process:nil complete:complete];
+    return [self uploadToUrl:url params:params files:files process:nil complete:complete];
 }
 
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url
-                                      params:(NSDictionary *)params
-                                       files:(NSArray *)files
-                                     process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
-                                    complete:(void (^)(BOOL successed, NSDictionary *result))complete
+- (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
+                                 params:(NSDictionary *)params
+                                  files:(NSArray *)files
+                                process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
+                               complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
     ALog(@"post request url:  %@  \npost params:  %@",url,params);
@@ -203,11 +203,18 @@
     return operation;
 }
 
-- (AFHTTPRequestOperation *)downloadFileWithUrl:(NSString *)url
-                                         params:(NSDictionary *)params
-                                       filePath:(NSString *)filePath
-                                        process:(void (^)(int64_t readBytes, int64_t totalBytes))process
-                                       complete:(void (^)(BOOL successed, NSDictionary *response))complete
+- (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
+                                   filePath:(NSString *)filePath
+                                   complete:(void (^)(BOOL successed, NSDictionary *response))complete
+{
+    return [self downloadFromUrl:url params:nil filePath:filePath process:nil complete:complete];
+}
+
+- (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
+                                     params:(NSDictionary *)params
+                                   filePath:(NSString *)filePath
+                                    process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+                                   complete:(void (^)(BOOL successed, NSDictionary *response))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
     
@@ -238,7 +245,7 @@
         if (complete && !moveError) {
             complete(true,responseObject);
         }else{
-            complete(false,responseObject);
+            complete?complete(false,responseObject):nil;
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         ALog(@"get error :  %@",error);

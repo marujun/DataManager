@@ -48,25 +48,31 @@
  */
 
 //AFHTTPRequestOperation可以暂停、重新开启、取消 [operation pause]、[operation resume];、[operation cancel];
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url
-                                      params:(NSDictionary *)params
-                                       files:(NSArray *)files
-                                    complete:(void (^)(BOOL successed, NSDictionary *result))complete;
+- (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
+                                 params:(NSDictionary *)params
+                                  files:(NSArray *)files
+                               complete:(void (^)(BOOL successed, NSDictionary *result))complete;
+
+
 //可以查看进度 process_block
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url
-                                      params:(NSDictionary *)params
-                                       files:(NSArray *)files
-                                     process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
-                                    complete:(void (^)(BOOL successed, NSDictionary *result))complete;
+- (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
+                                 params:(NSDictionary *)params
+                                  files:(NSArray *)files
+                                process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
+                               complete:(void (^)(BOOL successed, NSDictionary *result))complete;
 /*
  filePath : 下载文件的存储路径
  response : 接口返回的不是文件而是json数据
  process  : 进度
  */
-- (AFHTTPRequestOperation *)downloadFileWithUrl:(NSString *)url
-                                         params:(NSDictionary *)params
-                                       filePath:(NSString *)filePath
-                                        process:(void (^)(int64_t readBytes, int64_t totalBytes))process
-                                       complete:(void (^)(BOOL successed, NSDictionary *response))complete;
+- (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
+                                   filePath:(NSString *)filePath
+                                   complete:(void (^)(BOOL successed, NSDictionary *response))complete;
+
+- (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
+                                     params:(NSDictionary *)params
+                                   filePath:(NSString *)filePath
+                                    process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+                                   complete:(void (^)(BOOL successed, NSDictionary *response))complete;
 
 @end
