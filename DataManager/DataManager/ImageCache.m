@@ -52,7 +52,7 @@ static BOOL isDownloading_ImageCache;
     url?[task setObject:url forKey:@"url"]:nil;
     process?[task setObject:process forKey:@"process"]:nil;
     callback?[task setObject:callback forKey:@"callback"]:nil;
-    isDownloading = true;
+    isDownloading_ImageCache = true;
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         callback ? callback([UIImage imageWithContentsOfFile:filePath]) : nil;
