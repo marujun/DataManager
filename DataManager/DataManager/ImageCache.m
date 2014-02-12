@@ -10,7 +10,7 @@
 #import "HttpManager.h"
 
 static NSMutableArray *downloadTaskArray;
-static BOOL isDownloading;
+static BOOL isDownloading_ImageCache;
 
 @implementation UIImage (ImageCache)
 
@@ -37,7 +37,7 @@ static BOOL isDownloading;
 
 + (void)startDownload
 {
-    if (downloadTaskArray.count && !isDownloading) {
+    if (downloadTaskArray.count && !isDownloading_ImageCache) {
         NSDictionary *lastObj = [downloadTaskArray lastObject];
         [self downloadWithURL:lastObj[@"url"] process:lastObj[@"process"] callback:lastObj[@"callback"]];
     }
@@ -58,7 +58,7 @@ static BOOL isDownloading;
         callback ? callback([UIImage imageWithContentsOfFile:filePath]) : nil;
         
         [downloadTaskArray removeObject:task];
-        isDownloading = false;
+        isDownloading_ImageCache = false;
         [self startDownload];
     }else{
         [[HttpManager defaultManager] downloadFromUrl:url
@@ -74,7 +74,7 @@ static BOOL isDownloading;
                                                      }
                                                  }
                                                  [downloadTaskArray removeObject:task];
-                                                 isDownloading = false;
+                                                 isDownloading_ImageCache = false;
                                                  [self startDownload];
                                              }];
     }
