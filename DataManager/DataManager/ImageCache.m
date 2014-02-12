@@ -9,7 +9,7 @@
 #import "ImageCache.h"
 #import "HttpManager.h"
 
-static NSMutableArray *downloadTaskArray;
+static NSMutableArray *downloadTaskArray_ImageCache;
 static BOOL isDownloading_ImageCache;
 
 @implementation UIImage (ImageCache)
@@ -23,22 +23,22 @@ static BOOL isDownloading_ImageCache;
              process:(void (^)(int64_t readBytes, int64_t totalBytes))process
             callback:(void(^)(UIImage *image))callback
 {
-    if (!downloadTaskArray) {
-        downloadTaskArray = [[NSMutableArray alloc] init];
+    if (!downloadTaskArray_ImageCache) {
+        downloadTaskArray_ImageCache = [[NSMutableArray alloc] init];
     }
     NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
     url?[task setObject:url forKey:@"url"]:nil;
     process?[task setObject:process forKey:@"process"]:nil;
     callback?[task setObject:callback forKey:@"callback"]:nil;
-    [downloadTaskArray addObject:task];
+    [downloadTaskArray_ImageCache addObject:task];
     
     [self startDownload];
 }
 
 + (void)startDownload
 {
-    if (downloadTaskArray.count && !isDownloading_ImageCache) {
-        NSDictionary *lastObj = [downloadTaskArray lastObject];
+    if (downloadTaskArray_ImageCache.count && !isDownloading_ImageCache) {
+        NSDictionary *lastObj = [downloadTaskArray_ImageCache lastObject];
         [self downloadWithURL:lastObj[@"url"] process:lastObj[@"process"] callback:lastObj[@"callback"]];
     }
 }
@@ -57,7 +57,7 @@ static BOOL isDownloading_ImageCache;
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         callback ? callback([UIImage imageWithContentsOfFile:filePath]) : nil;
         
-        [downloadTaskArray removeObject:task];
+        [downloadTaskArray_ImageCache removeObject:task];
         isDownloading_ImageCache = false;
         [self startDownload];
     }else{
@@ -73,7 +73,7 @@ static BOOL isDownloading_ImageCache;
                                                          callback(nil);
                                                      }
                                                  }
-                                                 [downloadTaskArray removeObject:task];
+                                                 [downloadTaskArray_ImageCache removeObject:task];
                                                  isDownloading_ImageCache = false;
                                                  [self startDownload];
                                              }];
