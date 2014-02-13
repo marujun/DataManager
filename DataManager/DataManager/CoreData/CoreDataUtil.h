@@ -12,9 +12,9 @@
 
 @interface CoreDataUtil : NSObject
 
-@property (strong, nonatomic) NSManagedObjectContext *managedObjectContext;
-@property (strong, nonatomic) NSManagedObjectModel *managedObjectModel;
-@property (strong, nonatomic) NSPersistentStoreCoordinator *persistentStoreCoordinator;
+@property (strong, nonatomic) NSManagedObjectContext *managedObjectContext_util;
+@property (strong, nonatomic) NSManagedObjectModel *managedObjectModel_util;
+@property (strong, nonatomic) NSPersistentStoreCoordinator *persistentStoreCoordinator_util;
 
 + (void)launch;
 

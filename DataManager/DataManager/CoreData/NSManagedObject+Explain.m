@@ -19,8 +19,8 @@ _Pragma("clang diagnostic pop") \
 
 static dispatch_queue_t myCustomQueue;
 
-extern NSManagedObjectContext *globalManagedObjectContext;
-extern NSManagedObjectModel *globalManagedObjectModel;
+extern NSManagedObjectContext *globalManagedObjectContext_util;
+extern NSManagedObjectModel *globalManagedObjectModel_util;
 
 @implementation NSManagedObject (Explain)
 @dynamic index;
@@ -173,7 +173,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
             
         }else if ([value isKindOfClass:[NSDictionary class]]){
             @try {
-                NSEntityDescription *entityDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext];
+                NSEntityDescription *entityDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext_util];
                 NSRelationshipDescription *relationshipDescrip = [entityDescirp.relationshipsByName objectForKey:key];
                 NSString *tableName = relationshipDescrip.destinationEntity.name;
                 
@@ -193,7 +193,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
                 
                 for (NSDictionary *oneJsonObject in value)
                 {
-                    NSEntityDescription *entiDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext];
+                    NSEntityDescription *entiDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext_util];
                     NSRelationshipDescription *relationshipDescrip = [entiDescirp.relationshipsByName objectForKey:key];
                     NSString *tableName = relationshipDescrip.destinationEntity.name;
                     
@@ -223,8 +223,8 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     
     Class class = NSClassFromString(tableName);
     
-    NSEntityDescription *entityDescrip = [[globalManagedObjectModel entitiesByName] objectForKey:tableName];
-    oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext];
+    NSEntityDescription *entityDescrip = [[globalManagedObjectModel_util entitiesByName] objectForKey:tableName];
+    oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext_util];
     [oneObject setContentDictionary:dictionary];
     return oneObject;
 }
@@ -234,11 +234,11 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     NSMutableArray *resultArray = [[NSMutableArray alloc] init];
     
     Class class = NSClassFromString(tableName);
-    NSEntityDescription *entityDescrip = [[globalManagedObjectModel entitiesByName] objectForKey:tableName];
+    NSEntityDescription *entityDescrip = [[globalManagedObjectModel_util entitiesByName] objectForKey:tableName];
     
     for (NSDictionary *dictionary in otherArray)
     {
-        NSManagedObject *oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext];
+        NSManagedObject *oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext_util];
         [oneObject setContentDictionary:dictionary];
         
         [resultArray addObject:oneObject];
@@ -250,7 +250,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
 {
     for (NSManagedObject *object in manyObject)
     {
-        [globalManagedObjectContext deleteObject:object];
+        [globalManagedObjectContext_util deleteObject:object];
     }
 }
 
@@ -258,23 +258,22 @@ extern NSManagedObjectModel *globalManagedObjectModel;
 {
     //查询数据
     NSFetchRequest *request = [[NSFetchRequest alloc]init];
-    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext];
+    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
     [request setEntity:description];
     if (predicate) {
         [request setPredicate:predicate];
     }
     
-    NSArray *queryArr = [globalManagedObjectContext executeFetchRequest:request error:nil];
+    NSArray *queryArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
     //有匹配的记录时则更新记录
     if(queryArr && queryArr.count){
-        for (NSManagedObject *object in queryArr)
+        for (NSManagedObject *object in queryArr.copy)
         {
             [self updateObject:object params:params];
         }
     } else //没有匹配的记录时添加记录
     {
-        [self addObject:params toTable:tableName];
-        queryArr = [globalManagedObjectContext executeFetchRequest:request error:nil];
+        queryArr = @[[self addObject:params toTable:tableName]];
     }
     return queryArr;
 }
@@ -301,7 +300,8 @@ extern NSManagedObjectModel *globalManagedObjectModel;
                 if(otherObject){
                     [self updateObject:otherObject params:value];
                 }else{
-                    NSEntityDescription *entityDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext];
+                    NSEntityDescription *entityDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class])
+                                                                     inManagedObjectContext:globalManagedObjectContext_util];
                     NSRelationshipDescription *relationshipDescrip = [entityDescirp.relationshipsByName objectForKey:key];
                     NSString *tableName = relationshipDescrip.destinationEntity.name;
                     
@@ -325,7 +325,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
                         [self updateObject:objectArray[index] params:tempParams];
                     }else{
                         NSEntityDescription *entiDescirp = [NSEntityDescription entityForName:NSStringFromClass([object class])
-                                                                       inManagedObjectContext:globalManagedObjectContext];
+                                                                       inManagedObjectContext:globalManagedObjectContext_util];
                         NSRelationshipDescription *relationshipDescrip = [entiDescirp.relationshipsByName objectForKey:key];
                         NSString *tableName = relationshipDescrip.destinationEntity.name;
                         
@@ -353,7 +353,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     NSArray *resultArr = nil;
     
     NSFetchRequest *request = [[NSFetchRequest alloc]init];
-    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext];
+    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
     [request setEntity:description];
     if (predicate) {
         [request setPredicate:predicate];
@@ -361,7 +361,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     if (sortDescriptors && sortDescriptors.count) {
         [request setSortDescriptors:sortDescriptors];
     }
-    resultArr = [globalManagedObjectContext executeFetchRequest:request error:nil];
+    resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
     
     return resultArr;
 }
@@ -370,7 +370,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
 + (void)save:(void (^)(NSError *error))complete
 {
     NSError *error;
-    if (![globalManagedObjectContext save:&error]) {
+    if (![globalManagedObjectContext_util save:&error]) {
         // Update to handle the error appropriately.
         NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
         
@@ -392,22 +392,15 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     
     NSString *retrievedValue = (NSString *)CFBridgingRelease(dispatch_get_specific(&specificKey));
     if (retrievedValue && [retrievedValue isEqualToString:@"com.jizhi.coredata"]) {
-        if (actions) {
-            actions();
-        }
+        actions ? actions() : nil;
     }else{
-        if(async)
-        {
+        if(async){
             dispatch_async(myCustomQueue, ^{
-                if (actions) {
-                    actions();
-                }
+                actions ? actions() : nil;
             });
         }else{
             dispatch_sync(myCustomQueue, ^{
-                if (actions) {
-                    actions();
-                }
+                actions ? actions() : nil;
             });
         }
     }

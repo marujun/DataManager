@@ -8,13 +8,13 @@
 
 #import "CoreDataUtil.h"
 
-NSManagedObjectContext *globalManagedObjectContext;
-NSManagedObjectModel *globalManagedObjectModel;
+NSManagedObjectContext *globalManagedObjectContext_util;
+NSManagedObjectModel *globalManagedObjectModel_util;
 
 @implementation CoreDataUtil
-@synthesize managedObjectContext = _managedObjectContext;
-@synthesize managedObjectModel = _managedObjectModel;
-@synthesize persistentStoreCoordinator = _persistentStoreCoordinator;
+@synthesize managedObjectContext_util = _managedObjectContext_util;
+@synthesize managedObjectModel_util = _managedObjectModel_util;
+@synthesize persistentStoreCoordinator_util = _persistentStoreCoordinator_util;
 
 + (void)launch
 {
@@ -30,8 +30,8 @@ NSManagedObjectModel *globalManagedObjectModel;
     self = [super init];
     if (self) {
         //初始化模型
-        globalManagedObjectContext = [self managedObjectContext];
-        globalManagedObjectModel = [self managedObjectModel];
+        globalManagedObjectContext_util = [self managedObjectContext];
+        globalManagedObjectModel_util = [self managedObjectModel];
     }
     return self;
 }
@@ -41,33 +41,33 @@ NSManagedObjectModel *globalManagedObjectModel;
 // Returns the managed object context for the application.
 - (NSManagedObjectContext *)managedObjectContext
 {
-    if (_managedObjectContext != nil) {
-        return _managedObjectContext;
+    if (_managedObjectContext_util != nil) {
+        return _managedObjectContext_util;
     }
     
     NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
     if (coordinator != nil) {
-        _managedObjectContext = [[NSManagedObjectContext alloc] init];
-        [_managedObjectContext setPersistentStoreCoordinator:coordinator];
+        _managedObjectContext_util = [[NSManagedObjectContext alloc] init];
+        [_managedObjectContext_util setPersistentStoreCoordinator:coordinator];
     }
-    return _managedObjectContext;
+    return _managedObjectContext_util;
 }
 
 // Returns the managed object model for the application.
 - (NSManagedObjectModel *)managedObjectModel
 {
-    if (_managedObjectModel != nil) {
-        return _managedObjectModel;
+    if (_managedObjectModel_util != nil) {
+        return _managedObjectModel_util;
     }
     NSURL *modelURL = [[NSBundle mainBundle] URLForResource:@"models" withExtension:@"momd"];
-    _managedObjectModel = [[NSManagedObjectModel alloc] initWithContentsOfURL:modelURL];
-    return _managedObjectModel;
+    _managedObjectModel_util = [[NSManagedObjectModel alloc] initWithContentsOfURL:modelURL];
+    return _managedObjectModel_util;
 }
 
 // Returns the persistent store coordinator for the application.
 - (NSPersistentStoreCoordinator *)persistentStoreCoordinator {
-	if (_persistentStoreCoordinator != nil) {
-		return _persistentStoreCoordinator;
+	if (_persistentStoreCoordinator_util != nil) {
+		return _persistentStoreCoordinator_util;
 	}
     
 	NSURL *storeURL = [[self applicationDocumentsDirectory] URLByAppendingPathComponent:@"models.sqlite"];
@@ -77,17 +77,19 @@ NSManagedObjectModel *globalManagedObjectModel;
 	                         [NSNumber numberWithBool:YES], NSInferMappingModelAutomaticallyOption,
 	                         //[NSNumber numberWithBool:YES], NSIgnorePersistentStoreVersioningOption,
 	                         nil];
-	_persistentStoreCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self managedObjectModel]];
-	if (![_persistentStoreCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error]) {
+	_persistentStoreCoordinator_util = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self managedObjectModel]];
+	if (![_persistentStoreCoordinator_util addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error]) {
 		NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
         
 		// reset models data when core data change
+        [userDefaults removeObjectForKey:@"AllAuthData"];
+        [userDefaults synchronize];
 		[[NSFileManager defaultManager] removeItemAtURL:storeURL error:nil];
-		_persistentStoreCoordinator = nil;
+		_persistentStoreCoordinator_util = nil;
 		return [self persistentStoreCoordinator];
 	}
-
-	return _persistentStoreCoordinator;
+    
+	return _persistentStoreCoordinator_util;
 }
 
 

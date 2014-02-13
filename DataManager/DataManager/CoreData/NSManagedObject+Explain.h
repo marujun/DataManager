@@ -30,7 +30,6 @@
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate;
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
 
-
 //操作数据库基础方法(尽量少用)
 + (NSManagedObject *)addObject:(NSDictionary *)dictionary  toTable:(NSString *)tableName;
 + (NSArray *)addObjectsFromArray:(NSArray *)otherArray  toTable:(NSString *)tableName;

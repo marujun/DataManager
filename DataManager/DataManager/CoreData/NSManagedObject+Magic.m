@@ -23,8 +23,8 @@
 }
 @end
 
-extern NSManagedObjectContext *globalManagedObjectContext;
-extern NSManagedObjectModel *globalManagedObjectModel;
+extern NSManagedObjectContext *globalManagedObjectContext_util;
+extern NSManagedObjectModel *globalManagedObjectModel_util;
 
 @implementation NSManagedObject (Magic)
 
