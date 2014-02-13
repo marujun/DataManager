@@ -19,6 +19,7 @@
 + (void)updateTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params complete:(void (^)(NSArray *resultArray))complete;
 + (void)updateObject_async:(NSManagedObject *)object params:(NSDictionary *)params complete:(void (^)(NSManagedObject *object))complete;
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSArray *result))complete;
++ (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete;
 
 //同步执行任务
 + (NSManagedObject *)addObject_sync:(NSDictionary *)dictionary toTable:(NSString *)tableName;
@@ -27,9 +28,16 @@
 + (NSArray *)updateTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params;
 + (NSManagedObject *)updateObject_sync:(NSManagedObject *)object params:(NSDictionary *)params;
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate;
++ (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
 
 
-//是否在异步队列中操作数据库
+//操作数据库基础方法(尽量少用)
++ (NSManagedObject *)addObject:(NSDictionary *)dictionary  toTable:(NSString *)tableName;
++ (NSArray *)addObjectsFromArray:(NSArray *)otherArray  toTable:(NSString *)tableName;
++ (NSArray *)updateTable:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params;
++ (NSManagedObject *)updateObject:(NSManagedObject *)object params:(NSDictionary *)params;
++ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
++ (void)save:(void (^)(NSError *error))complete;
 + (void)asyncQueue:(BOOL)async actions:(void (^)(void))actions;
 
 @end

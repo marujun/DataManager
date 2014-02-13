@@ -79,8 +79,12 @@ extern NSManagedObjectModel *globalManagedObjectModel;
 }
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSArray *result))complete
 {
+    [self getTable_async:tableName predicate:predicate sortDescriptors:nil complete:complete];
+}
++ (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete
+{
     [self asyncQueue:true actions:^{
-        NSArray *resultArr = [self getTable:tableName predicate:predicate];
+        NSArray *resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors];
         if (complete) {
             complete(resultArr);
         }
@@ -135,9 +139,13 @@ extern NSManagedObjectModel *globalManagedObjectModel;
 }
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate
 {
+    return [self getTable_sync:tableName predicate:predicate sortDescriptors:nil];
+}
++ (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors
+{
     __block NSArray *resultArr = nil;
     [self asyncQueue:false actions:^{
-        resultArr = [self getTable:tableName predicate:predicate];
+        resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors];
     }];
     return resultArr;
 }
@@ -195,7 +203,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
                     }
                     SEL addSelector = NSSelectorFromString([NSString stringWithFormat:@"add%@Object:",[NSManagedObject upHeadString:key]]);
                     SuppressPerformSelectorLeakWarning([self performSelector:addSelector withObject:object]);
-
+                    
                     index++;
                 }
             }
@@ -340,7 +348,7 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     return object;
 }
 
-+ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate
++ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors
 {
     NSArray *resultArr = nil;
     
@@ -350,7 +358,9 @@ extern NSManagedObjectModel *globalManagedObjectModel;
     if (predicate) {
         [request setPredicate:predicate];
     }
-    
+    if (sortDescriptors && sortDescriptors.count) {
+        [request setSortDescriptors:sortDescriptors];
+    }
     resultArr = [globalManagedObjectContext executeFetchRequest:request error:nil];
     
     return resultArr;
