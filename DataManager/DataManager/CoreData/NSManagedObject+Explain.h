@@ -30,13 +30,7 @@
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate;
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
 
-//操作数据库基础方法(尽量少用)
-+ (NSManagedObject *)addObject:(NSDictionary *)dictionary  toTable:(NSString *)tableName;
-+ (NSArray *)addObjectsFromArray:(NSArray *)otherArray  toTable:(NSString *)tableName;
-+ (NSArray *)updateTable:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params;
-+ (NSManagedObject *)updateObject:(NSManagedObject *)object params:(NSDictionary *)params;
-+ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
-+ (void)save:(void (^)(NSError *error))complete;
+//是否在异步队列中操作数据库
 + (void)asyncQueue:(BOOL)async actions:(void (^)(void))actions;
 
 @end
