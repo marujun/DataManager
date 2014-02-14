@@ -37,7 +37,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 + (void)cleanTable:(NSString *)tableName
 {
     NSArray *array = [self getTable_sync:tableName predicate:nil];
-    [self deleteObject_sync:array];
+    [self deleteObjects_sync:array];
 }
 
 @end

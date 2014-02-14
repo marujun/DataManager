@@ -40,16 +40,16 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     [self asyncQueue:true actions:^{
         __block NSArray *resultArray = [self addObjectsFromArray:otherArray toTable:tableName];
-        [self save:^(NSError *error) { error?resultArray=nil:nil; }];
+        [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
         if (complete) {
             complete(resultArray);
         }
     }];
 }
-+ (void)deleteObject_async:(NSArray *)manyObject complete:(void (^)(BOOL success))complete
++ (void)deleteObjects_async:(NSArray *)manyObject complete:(void (^)(BOOL success))complete
 {
     [self asyncQueue:true actions:^{
-        [self deleteObject:manyObject];
+        [self deleteObjects:manyObject];
         __block BOOL success = true;
         [self save:^(NSError *error) { error?success=false:true; }];
         if (complete) {
@@ -61,7 +61,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     [self asyncQueue:true actions:^{
         __block NSArray *resultArray = [self updateTable:tableName predicate:predicate params:params];
-        [self save:^(NSError *error) { error?resultArray=nil:nil; }];
+        [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
         if (complete) {
             complete(resultArray);
         }
@@ -106,15 +106,15 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     __block NSArray *resultArr = nil;
     [self asyncQueue:false actions:^{
         resultArr = [self addObjectsFromArray:otherArray toTable:tableName];
-        [self save:^(NSError *error) { error?resultArr=nil:nil; }];
+        [self save:^(NSError *error) { error?resultArr=@[]:nil; }];
     }];
     return resultArr;
 }
-+ (BOOL)deleteObject_sync:(NSArray *)manyObject
++ (BOOL)deleteObjects_sync:(NSArray *)manyObject
 {
     __block BOOL success = true;
     [self asyncQueue:false actions:^{
-        [self deleteObject:manyObject];
+        [self deleteObjects:manyObject];
         [self save:^(NSError *error) { error?success=false:true; }];
     }];
     return success;
@@ -124,7 +124,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     __block NSArray *resultArray = nil;
     [self asyncQueue:false actions:^{
         resultArray = [self updateTable:tableName predicate:predicate params:params];
-        [self save:^(NSError *error) { error?resultArray=nil:nil; }];
+        [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
     }];
     return resultArray;
 }
@@ -168,8 +168,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             @catch (NSException *exception) {
                 NSLog(@"解析基本类型出错了-->%@",exception);
             }
-            @finally {
-            }
             
         }else if ([value isKindOfClass:[NSDictionary class]]){
             @try {
@@ -183,8 +181,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             }
             @catch (NSException *exception) {
                 NSLog(@"解析字典出错了-->%@",exception);
-            }
-            @finally {
             }
         }else if ([value isKindOfClass:[NSArray class]]){
             
@@ -210,8 +206,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             @catch (NSException *exception) {
                 NSLog(@"解析数组出错了-->%@",exception);
             }
-            @finally {
-            }
         }
     }
 }
@@ -220,12 +214,12 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 + (NSManagedObject *)addObject:(NSDictionary *)dictionary  toTable:(NSString *)tableName
 {
     NSManagedObject *oneObject = nil;
-    
     Class class = NSClassFromString(tableName);
     
     NSEntityDescription *entityDescrip = [[globalManagedObjectModel_util entitiesByName] objectForKey:tableName];
     oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext_util];
     [oneObject setContentDictionary:dictionary];
+    
     return oneObject;
 }
 
@@ -240,13 +234,12 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     {
         NSManagedObject *oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext_util];
         [oneObject setContentDictionary:dictionary];
-        
         [resultArray addObject:oneObject];
     }
     return [resultArray copy];
 }
 
-+ (void)deleteObject:(NSArray *)manyObject
++ (void)deleteObjects:(NSArray *)manyObject
 {
     for (NSManagedObject *object in manyObject)
     {
@@ -264,7 +257,14 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         [request setPredicate:predicate];
     }
     
-    NSArray *queryArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
+    NSArray *queryArr = @[];
+    @try {
+        queryArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"查询数据库出错了-->%@",exception);
+    }
+    
     //有匹配的记录时则更新记录
     if(queryArr && queryArr.count){
         for (NSManagedObject *object in queryArr.copy)
@@ -291,9 +291,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             @catch (NSException *exception) {
                 NSLog(@"key值出错了-->%@",exception);
             }
-            @finally {
-            }
-            
         }else if ([value isKindOfClass:[NSDictionary class]]){
             @try {
                 NSManagedObject *otherObject = [object valueForKey:key];
@@ -311,8 +308,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             }
             @catch (NSException *exception) {
                 NSLog(@"解析字典出错了-->%@",exception);
-            }
-            @finally {
             }
         }else if ([value isKindOfClass:[NSArray class]]){
             @try {
@@ -341,8 +336,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             @catch (NSException *exception) {
                 NSLog(@"解析数组出错了-->%@",exception);
             }
-            @finally {
-            }
         }
     }
     return object;
@@ -350,7 +343,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 
 + (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors
 {
-    NSArray *resultArr = nil;
+    NSArray *resultArr = @[];
     
     NSFetchRequest *request = [[NSFetchRequest alloc]init];
     NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
@@ -361,7 +354,12 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     if (sortDescriptors && sortDescriptors.count) {
         [request setSortDescriptors:sortDescriptors];
     }
-    resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
+    @try {
+        resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"查询数据库出错了-->%@",exception);
+    }
     
     return resultArr;
 }
