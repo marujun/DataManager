@@ -165,7 +165,11 @@
             if ([value isKindOfClass:[NSData class]]) {
                 [formData appendPartWithFileData:value name:name fileName:fileName mimeType:mimeType];
             }else if ([value isKindOfClass:[UIImage class]]) {
-                [formData appendPartWithFileData:UIImageJPEGRepresentation(value, 0.5) name:name fileName:fileName mimeType:mimeType];
+                if (UIImagePNGRepresentation(value)) {  //返回为png图像。
+                    [formData appendPartWithFileData:UIImagePNGRepresentation(value) name:name fileName:fileName mimeType:mimeType];
+                }else {   //返回为JPEG图像。
+                    [formData appendPartWithFileData:UIImageJPEGRepresentation(value, 0.5) name:name fileName:fileName mimeType:mimeType];
+                }
             }else if ([value isKindOfClass:[NSURL class]]) {
                 [formData appendPartWithFileURL:value name:name fileName:fileName mimeType:mimeType error:nil];
             }else if ([value isKindOfClass:[NSString class]]) {
