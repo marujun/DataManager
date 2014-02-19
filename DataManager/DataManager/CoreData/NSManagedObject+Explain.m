@@ -81,10 +81,10 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     [self getTable_async:tableName predicate:predicate sortDescriptors:nil complete:complete];
 }
-+ (void)getTable_async:(NSString *)tableName callback:(void (^)(NSFetchRequest *request))callback complete:(void (^)(NSArray *result))complete
++ (void)getTable_async:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions complete:(void (^)(NSArray *result))complete
 {
     [self asyncQueue:true actions:^{
-        NSArray *resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil callback:callback];
+        NSArray *resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil actions:actions];
         if (complete) {
             complete(resultArr);
         }
@@ -93,7 +93,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete
 {
     [self asyncQueue:true actions:^{
-        NSArray *resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors callback:nil];
+        NSArray *resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors actions:nil];
         if (complete) {
             complete(resultArr);
         }
@@ -150,11 +150,11 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     return [self getTable_sync:tableName predicate:predicate sortDescriptors:nil];
 }
-+ (NSArray *)getTable_sync:(NSString *)tableName callback:(void (^)(NSFetchRequest *request))callback
++ (NSArray *)getTable_sync:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions
 {
     __block NSArray *resultArr = nil;
     [self asyncQueue:false actions:^{
-        resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil callback:callback];
+        resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil actions:actions];
     }];
     return resultArr;
 }
@@ -162,7 +162,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     __block NSArray *resultArr = nil;
     [self asyncQueue:false actions:^{
-        resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors callback:nil];
+        resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors actions:nil];
     }];
     return resultArr;
 }
@@ -358,7 +358,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     return object;
 }
 
-+ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors callback:(void (^)(NSFetchRequest *request))callback
++ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors actions:(void (^)(NSFetchRequest *request))actions
 {
     NSArray *resultArr = @[];
     
@@ -371,7 +371,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     if (sortDescriptors && sortDescriptors.count) {
         [request setSortDescriptors:sortDescriptors];
     }
-    callback?callback(request):nil;
+    actions?actions(request):nil;
     @try {
         resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
     }
