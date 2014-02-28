@@ -11,6 +11,7 @@
 #import <UIKit/UIButton.h>
 
 @interface UIImage (ImageCache)
+@property(nonatomic, strong)NSString *lastCacheUrl;
 
 /* ********************----------*****************************
  1、UIImage 的扩展方法，用于缓存图片；如果图片已下载则使用本地图片
@@ -29,6 +30,7 @@
 @end
 
 @interface UIImageView (ImageCache)
+@property(nonatomic, strong)NSString *lastCacheUrl;
 
 /*设置UIImageView的图片的URL,下载失败设置图片为空*/
 - (void)setImageURL:(NSString *)url;
@@ -42,6 +44,7 @@
 @end
 
 @interface UIButton (ImageCache)
+@property(nonatomic, strong)NSString *lastCacheUrl;
 
 /*设置按钮的图片的URL,下载失败设置图片为空*/
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state;

@@ -8,11 +8,26 @@
 
 #import "ImageCache.h"
 #import "HttpManager.h"
+#import <objc/runtime.h>
+
+#define ADD_DYNAMIC_PROPERTY(PROPERTY_TYPE,PROPERTY_NAME,SETTER_NAME) \
+@dynamic PROPERTY_NAME ; \
+static char kProperty##PROPERTY_NAME; \
+- ( PROPERTY_TYPE ) PROPERTY_NAME \
+{ \
+return ( PROPERTY_TYPE ) objc_getAssociatedObject(self, &(kProperty##PROPERTY_NAME ) ); \
+} \
+\
+- (void) SETTER_NAME :( PROPERTY_TYPE ) PROPERTY_NAME \
+{ \
+objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_ASSOCIATION_RETAIN); \
+} \
 
 static NSMutableArray *downloadTaskArray_ImageCache;
 static BOOL isDownloading_ImageCache;
 
 @implementation UIImage (ImageCache)
+ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 
 + (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback
 {
@@ -55,7 +70,9 @@ static BOOL isDownloading_ImageCache;
     isDownloading_ImageCache = true;
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        callback ? callback([UIImage imageWithContentsOfFile:filePath]) : nil;
+        UIImage *lastImage = [UIImage imageWithContentsOfFile:filePath];
+        lastImage.lastCacheUrl = url?url:@"";
+        callback ? callback(lastImage) : nil;
         
         [downloadTaskArray_ImageCache removeObject:task];
         isDownloading_ImageCache = false;
@@ -68,7 +85,9 @@ static BOOL isDownloading_ImageCache;
                                              complete:^(BOOL successed, NSDictionary *result) {
                                                  if (callback) {
                                                      if (successed && !result) {
-                                                         callback([UIImage imageWithContentsOfFile:filePath]);
+                                                         UIImage *lastImage = [UIImage imageWithContentsOfFile:filePath];
+                                                         lastImage.lastCacheUrl = url?url:@"";
+                                                         callback ? callback(lastImage) : nil;
                                                      }else{
                                                          callback(nil);
                                                      }
@@ -95,6 +114,8 @@ static BOOL isDownloading_ImageCache;
 @end
 
 @implementation UIImageView (ImageCache)
+ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
+
 - (void)setImageURL:(NSString *)url
 {
     [self setImageURL:url callback:nil];
@@ -102,15 +123,24 @@ static BOOL isDownloading_ImageCache;
 - (void)setImageURL:(NSString *)url defaultImage:(UIImage *)defaultImage
 {
     defaultImage ? self.image=defaultImage : nil;
+    self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        image ? self.image=image : nil;
+        NSLog(@"lastCacheUrl      %@",image.lastCacheUrl);
+        NSLog(@"self.lastCacheUrl %@",self.lastCacheUrl);
+        if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
+            image ? self.image=image : nil;
+        }
     }];
 }
 - (void)setImageURL:(NSString *)url callback:(void(^)(UIImage *image))callback
 {
+    self.lastCacheUrl = url;
+    
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        image ? self.image=image : nil;
+        if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
+            image ? self.image=image : nil;
+        }
         callback ? callback(image) : nil;
     }];
 }
@@ -118,6 +148,7 @@ static BOOL isDownloading_ImageCache;
 @end
 
 @implementation UIButton (ImageCache)
+ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state
 {
@@ -126,15 +157,22 @@ static BOOL isDownloading_ImageCache;
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
 {
     defaultImage ? [self setImage:defaultImage forState:state] : nil;
+    self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        image ? [self setImage:image forState:state] : nil;
+        if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
+            image ? [self setImage:image forState:state] : nil;
+        }
     }];
 }
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
 {
+    self.lastCacheUrl = url;
+    
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        image ? [self setImage:image forState:state] : nil;
+        if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
+            image ? [self setImage:image forState:state] : nil;
+        }
         callback ? callback(image) : nil;
     }];
 }
@@ -147,15 +185,22 @@ static BOOL isDownloading_ImageCache;
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
 {
     defaultImage ? [self setBackgroundImage:defaultImage forState:state] : nil;
+    self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        image ? [self setBackgroundImage:image forState:state] : nil;
+        if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
+            image ? [self setBackgroundImage:image forState:state] : nil;
+        }
     }];
 }
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
 {
+    self.lastCacheUrl = url;
+    
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        image ? [self setBackgroundImage:image forState:state] : nil;
+        if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
+            image ? [self setBackgroundImage:image forState:state] : nil;
+        }
         callback ? callback(image) : nil;
     }];
 }
