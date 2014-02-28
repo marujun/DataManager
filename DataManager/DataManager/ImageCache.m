@@ -126,8 +126,6 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
     self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {
-        NSLog(@"lastCacheUrl      %@",image.lastCacheUrl);
-        NSLog(@"self.lastCacheUrl %@",self.lastCacheUrl);
         if ([image.lastCacheUrl isEqualToString:self.lastCacheUrl]) {
             image ? self.image=image : nil;
         }
