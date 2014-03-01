@@ -23,7 +23,6 @@ extern NSManagedObjectContext *globalManagedObjectContext_util;
 extern NSManagedObjectModel *globalManagedObjectModel_util;
 
 @implementation NSManagedObject (Explain)
-@dynamic index;
 
 //异步执行任务
 + (void)addObject_async:(NSDictionary *)dictionary  toTable:(NSString *)tableName complete:(void (^)(NSManagedObject *object))complete
@@ -202,8 +201,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         }else if ([value isKindOfClass:[NSArray class]]){
             
             @try {
-                int index = 0;
-                
                 for (NSDictionary *oneJsonObject in value)
                 {
                     NSEntityDescription *entiDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext_util];
@@ -211,13 +208,8 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
                     NSString *tableName = relationshipDescrip.destinationEntity.name;
                     
                     NSManagedObject *object = [NSManagedObject addObject:oneJsonObject toTable:tableName];
-                    if ([object respondsToSelector:@selector(setIndex:)]) {
-                        object.index = [NSNumber numberWithInt:index];
-                    }
                     SEL addSelector = NSSelectorFromString([NSString stringWithFormat:@"add%@Object:",[NSManagedObject upHeadString:key]]);
                     SuppressPerformSelectorLeakWarning([self performSelector:addSelector withObject:object]);
-                    
-                    index++;
                 }
             }
             @catch (NSException *exception) {
@@ -342,9 +334,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
                         NSString *tableName = relationshipDescrip.destinationEntity.name;
                         
                         NSManagedObject *tempObject = [self addObject:tempParams toTable:tableName];
-                        if ([tempObject respondsToSelector:@selector(setIndex:)]) {
-                            tempObject.index = [NSNumber numberWithInt:index];
-                        }
                         SEL addSelector = NSSelectorFromString([NSString stringWithFormat:@"add%@Object:",[NSManagedObject upHeadString:key]]);
                         SuppressPerformSelectorLeakWarning([object performSelector:addSelector withObject:tempObject]);
                     }
@@ -385,12 +374,18 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 
 + (void)save:(void (^)(NSError *error))complete
 {
-    NSError *error;
-    if (![globalManagedObjectContext_util save:&error]) {
-        // Update to handle the error appropriately.
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        
-        exit(-1);  // Fail
+    NSError *error = nil;
+    @try {
+        if (![globalManagedObjectContext_util save:&error]) {
+            // Update to handle the error appropriately.
+            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
+        }
+        complete ? complete(error) : nil;
+    }
+    @catch (NSException *exception) {
+        NSLog(@"sace exception %@, %@", exception, [exception userInfo]);
+        error = [[NSError alloc] initWithDomain:@"CoreData.Save" code:1001 userInfo:exception.userInfo];
+        complete ? complete(error) : nil;
     }
 }
 

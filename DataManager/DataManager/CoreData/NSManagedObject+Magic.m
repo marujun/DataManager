@@ -9,20 +9,6 @@
 #import "NSManagedObject+Magic.h"
 #import "CoreDataUtil.h"
 
-@implementation NSSet (TCNSManagedObjectMethods)
-- (NSArray *)sortObjects
-{
-    return [[self allObjects] sortedArrayUsingComparator:^NSComparisonResult(NSManagedObject *obj1, NSManagedObject *obj2) {
-        if (obj1.index.intValue > obj2.index.intValue) {
-            return (NSComparisonResult)NSOrderedDescending;
-        }else if (obj1.index.intValue < obj2.index.intValue){
-            return NSOrderedAscending;
-        }
-        return NSOrderedSame;
-    }];
-}
-@end
-
 extern NSManagedObjectContext *globalManagedObjectContext_util;
 extern NSManagedObjectModel *globalManagedObjectModel_util;
 

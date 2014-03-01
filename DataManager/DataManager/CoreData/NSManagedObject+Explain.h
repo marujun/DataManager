@@ -10,8 +10,6 @@
 
 @interface NSManagedObject (Explain)
 
-@property (nonatomic, retain) NSNumber * index;
-
 //异步执行任务
 + (void)addObject_async:(NSDictionary *)dictionary toTable:(NSString *)tableName complete:(void (^)(NSManagedObject *object))complete;
 + (void)addObjectsFromArray_async:(NSArray *)otherArray  toTable:(NSString *)tableName complete:(void (^)(NSArray *resultArray))complete;
