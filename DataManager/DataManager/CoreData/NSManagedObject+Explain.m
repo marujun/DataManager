@@ -259,20 +259,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 + (NSArray *)updateTable:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params
 {
     //查询数据
-    NSFetchRequest *request = [[NSFetchRequest alloc]init];
-    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
-    [request setEntity:description];
-    if (predicate) {
-        [request setPredicate:predicate];
-    }
-    
-    NSArray *queryArr = @[];
-    @try {
-        queryArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
-    }
-    @catch (NSException *exception) {
-        NSLog(@"查询数据库出错了-->%@",exception);
-    }
+    NSArray *queryArr = [self getTable:tableName predicate:predicate sortDescriptors:nil actions:nil];
     
     //有匹配的记录时则更新记录
     if(queryArr && queryArr.count){
