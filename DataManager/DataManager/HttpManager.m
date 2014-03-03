@@ -74,11 +74,23 @@
 }
 @end
 
+@interface HttpManager ()
+{
+    AFHTTPRequestOperationManager *operationManager;
+}
+@end
+
 @implementation HttpManager
 
 - (id)init{
     self = [super init];
 	if (self) {
+        operationManager = [AFHTTPRequestOperationManager manager];
+        operationManager.responseSerializer.acceptableContentTypes = nil;
+        
+        NSURLCache *urlCache = [NSURLCache sharedURLCache];
+        [urlCache setMemoryCapacity:5*1024*1024];  /* 设置缓存的大小为5M*/
+        [NSURLCache setSharedURLCache:urlCache];
     }
     return self;
 }
@@ -89,7 +101,6 @@
     static dispatch_once_t pred = 0;
     __strong static id defaultHttpManager = nil;
     dispatch_once( &pred, ^{
-        
         defaultHttpManager = [[self alloc] init];
     });
     return defaultHttpManager;
@@ -97,42 +108,91 @@
 
 - (void)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
-    params = [[HttpManager getRequestBodyWithParams:params] copy];
-    
-    AFHTTPRequestOperationManager *manager = [AFHTTPRequestOperationManager manager];
-    manager.responseSerializer.acceptableContentTypes = nil;
-    
-    [manager GET:url parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        FLOG(@"get request url:  %@  \nget responseObject:  %@",[operation.request.URL.absoluteString decode], responseObject);
-        if (complete) {
-            complete(true,responseObject);
-        }
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        FLOG(@"get request url:  %@ \nget error :  %@",[operation.request.URL.absoluteString decode], error);
-        if (complete) {
-            complete(false,nil);
-        }
-    }];
+    [self requestToUrl:url method:@"GET" useCache:NO params:params complete:complete];
+}
+
+- (void)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL, NSDictionary *))complete
+{
+    [self requestToUrl:url method:@"GET" useCache:YES params:params complete:complete];
 }
 
 - (void)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
+    [self requestToUrl:url method:@"POST" useCache:NO params:params complete:complete];
+}
+
+- (void)requestToUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache
+              params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
+{
     params = [[HttpManager getRequestBodyWithParams:params] copy];
     
-    AFHTTPRequestOperationManager *manager = [AFHTTPRequestOperationManager manager];
-    manager.responseSerializer.acceptableContentTypes = nil;
+    AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
+    NSMutableURLRequest *request = [serializer requestWithMethod:method URLString:url parameters:params error:nil];
     
-    [manager POST:url parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        FLOG(@"post request url:  %@  \npost params:  %@\npost responseObject:  %@",operation.request.URL,params,responseObject);
-        if (complete) {
-            complete(true,responseObject);
-        }
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        FLOG(@"post request url:  %@  \npost params:  %@\npost error :  %@",operation.request.URL,params,error);
-        if (complete) {
-            complete(false,nil);
+    [request setTimeoutInterval:10];
+    if (useCache) {
+        [request setCachePolicy:NSURLRequestReturnCacheDataElseLoad];
+    }
+    
+    void (^requestSuccessBlock)(AFHTTPRequestOperation *operation, id responseObject) = ^(AFHTTPRequestOperation *operation, id responseObject) {
+        [self logWithOperation:operation method:method params:params];
+        complete ? complete(true,responseObject) : nil;
+    };
+    void (^requestFailureBlock)(AFHTTPRequestOperation *operation, NSError *error) = ^(AFHTTPRequestOperation *operation, NSError *error) {
+        [self logWithOperation:operation method:method params:params];
+        complete ? complete(false,nil) : nil;
+    };
+    
+    AFHTTPRequestOperation *operation = nil;
+    if (useCache) {
+        operation = [self cacheOperationWithRequest:request success:requestSuccessBlock failure:requestFailureBlock];
+    }else{
+        operation = [operationManager HTTPRequestOperationWithRequest:request success:requestSuccessBlock failure:requestFailureBlock];
+    }
+    [operationManager.operationQueue addOperation:operation];
+}
+
+- (AFHTTPRequestOperation *)cacheOperationWithRequest:(NSURLRequest *)urlRequest
+                                              success:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                              failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+{
+    AFHTTPRequestOperation *operation = [operationManager HTTPRequestOperationWithRequest:urlRequest success:^(AFHTTPRequestOperation *operation, id responseObject){
+        NSCachedURLResponse *cachedURLResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:urlRequest];
+        
+        //store in cache
+        cachedURLResponse = [[NSCachedURLResponse alloc] initWithResponse:operation.response data:operation.responseData userInfo:nil storagePolicy:NSURLCacheStorageAllowed];
+        [[NSURLCache sharedURLCache] storeCachedResponse:cachedURLResponse forRequest:urlRequest];
+        
+        success(operation,responseObject);
+        
+    }failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        if (error.code == kCFURLErrorNotConnectedToInternet) {
+            NSCachedURLResponse *cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:urlRequest];
+            if (cachedResponse != nil && [[cachedResponse data] length] > 0) {
+                success(operation, cachedResponse.data);
+            } else {
+                failure(operation, error);
+            }
+        } else {
+            failure(operation, error);
         }
     }];
+    
+    return operation;
+}
+
+- (void)logWithOperation:(AFHTTPRequestOperation *)operation method:(NSString *)method params:(NSDictionary *)params
+{
+    if ([[method uppercaseString] isEqualToString:@"GET"]) {
+        FLOG(@"get request url:  %@  \n",[operation.request.URL.absoluteString decode]);
+    }else{
+        FLOG(@"%@ request url:  %@  \npost params:  %@\n",[method lowercaseString],[operation.request.URL.absoluteString decode],params);
+    }
+    if (operation.error) {
+        FLOG(@"%@ error :  %@",[method lowercaseString],operation.error);
+    }else{
+        FLOG(@"%@ responseObject:  %@",[method lowercaseString],operation.responseObject);
+    }
 }
 
 - (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
@@ -178,22 +238,19 @@
         }
     } error:nil];
     
-    AFHTTPRequestOperationManager *manager = [AFHTTPRequestOperationManager manager];
-    manager.responseSerializer.acceptableContentTypes = nil;
-    
     AFHTTPRequestOperation *operation = nil;
-    operation = [manager HTTPRequestOperationWithRequest:request
-                                                 success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                                                     FLOG(@"post responseObject:  %@",responseObject);
-                                                     if (complete) {
-                                                         complete(true,responseObject);
-                                                     }
-                                                 } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                                                     FLOG(@"post error :  %@",error);
-                                                     if (complete) {
-                                                         complete(false,nil);
-                                                     }
-                                                 }];
+    operation = [operationManager HTTPRequestOperationWithRequest:request
+                                                          success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                                                              FLOG(@"post responseObject:  %@",responseObject);
+                                                              if (complete) {
+                                                                  complete(true,responseObject);
+                                                              }
+                                                          } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                                                              FLOG(@"post error :  %@",error);
+                                                              if (complete) {
+                                                                  complete(false,nil);
+                                                              }
+                                                          }];
     
     [operation setUploadProgressBlock:^(NSUInteger bytesWritten, NSInteger totalBytesWritten, NSInteger totalBytesExpectedToWrite) {
         FLOG(@"upload process: %.2d%% (%ld/%ld)",100*totalBytesWritten/totalBytesExpectedToWrite,(long)totalBytesWritten,(long)totalBytesExpectedToWrite);
@@ -201,7 +258,6 @@
             process(totalBytesWritten,totalBytesExpectedToWrite);
         }
     }];
-    
     [operation start];
     
     return operation;

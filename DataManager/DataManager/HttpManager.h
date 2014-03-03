@@ -35,6 +35,8 @@
 
 //GET 请求
 - (void)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete;
+- (void)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL, NSDictionary *))complete;  //请求失败时使用缓存数据
+
 //POST 请求
 - (void)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete;
 
