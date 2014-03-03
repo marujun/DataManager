@@ -21,7 +21,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 }
 
 + (void)imageWithURL:(NSString *)url
-             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+             process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
             callback:(void(^)(UIImage *image))callback
 {
     if (!downloadTaskArray_ImageCache) {
@@ -45,7 +45,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 }
 
 + (void)downloadWithURL:(NSString *)url
-                process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+                process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
                callback:(void(^)(UIImage *image))callback
 {
     NSString *filePath = [self getImagePathWithURL:url];

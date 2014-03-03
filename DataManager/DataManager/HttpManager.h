@@ -58,7 +58,7 @@
 - (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
-                                process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
+                                process:(void (^)(NSInteger writedBytes, NSInteger totalBytes))process
                                complete:(void (^)(BOOL successed, NSDictionary *result))complete;
 /*
  filePath : 下载文件的存储路径
@@ -72,7 +72,7 @@
 - (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
                                      params:(NSDictionary *)params
                                    filePath:(NSString *)filePath
-                                    process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+                                    process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
                                    complete:(void (^)(BOOL successed, NSDictionary *response))complete;
 
 @end

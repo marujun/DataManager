@@ -32,7 +32,7 @@ objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_
 + (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback;
 
 + (void)imageWithURL:(NSString *)url
-             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+             process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
             callback:(void(^)(UIImage *image))callback;
 
 /*通过URL获取缓存图片在本地对应的路径*/

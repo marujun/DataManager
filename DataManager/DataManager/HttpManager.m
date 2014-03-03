@@ -103,12 +103,12 @@
     manager.responseSerializer.acceptableContentTypes = nil;
     
     [manager GET:url parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        ALog(@"get request url:  %@  \nget responseObject:  %@",[operation.request.URL.absoluteString decode], responseObject);
+        FLOG(@"get request url:  %@  \nget responseObject:  %@",[operation.request.URL.absoluteString decode], responseObject);
         if (complete) {
             complete(true,responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        ALog(@"get request url:  %@ \nget error :  %@",[operation.request.URL.absoluteString decode], error);
+        FLOG(@"get request url:  %@ \nget error :  %@",[operation.request.URL.absoluteString decode], error);
         if (complete) {
             complete(false,nil);
         }
@@ -123,12 +123,12 @@
     manager.responseSerializer.acceptableContentTypes = nil;
     
     [manager POST:url parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        ALog(@"post request url:  %@  \npost params:  %@\npost responseObject:  %@",operation.request.URL,params,responseObject);
+        FLOG(@"post request url:  %@  \npost params:  %@\npost responseObject:  %@",operation.request.URL,params,responseObject);
         if (complete) {
             complete(true,responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        ALog(@"post request url:  %@  \npost params:  %@\npost error :  %@",operation.request.URL,params,error);
+        FLOG(@"post request url:  %@  \npost params:  %@\npost error :  %@",operation.request.URL,params,error);
         if (complete) {
             complete(false,nil);
         }
@@ -146,11 +146,11 @@
 - (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
-                                process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
+                                process:(void (^)(NSInteger writedBytes, NSInteger totalBytes))process
                                complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
-    ALog(@"post request url:  %@  \npost params:  %@",url,params);
+    FLOG(@"post request url:  %@  \npost params:  %@",url,params);
     
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     
@@ -184,19 +184,19 @@
     AFHTTPRequestOperation *operation = nil;
     operation = [manager HTTPRequestOperationWithRequest:request
                                                  success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                                                     ALog(@"post responseObject:  %@",responseObject);
+                                                     FLOG(@"post responseObject:  %@",responseObject);
                                                      if (complete) {
                                                          complete(true,responseObject);
                                                      }
                                                  } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                                                     ALog(@"post error :  %@",error);
+                                                     FLOG(@"post error :  %@",error);
                                                      if (complete) {
                                                          complete(false,nil);
                                                      }
                                                  }];
     
-    [operation setUploadProgressBlock:^(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite) {
-        NSLog(@"upload process: %.2lld%% (%lld/%lld)",100*totalBytesWritten/totalBytesExpectedToWrite,totalBytesWritten,totalBytesExpectedToWrite);
+    [operation setUploadProgressBlock:^(NSUInteger bytesWritten, NSInteger totalBytesWritten, NSInteger totalBytesExpectedToWrite) {
+        FLOG(@"upload process: %.2d%% (%ld/%ld)",100*totalBytesWritten/totalBytesExpectedToWrite,(long)totalBytesWritten,(long)totalBytesExpectedToWrite);
         if (process) {
             process(totalBytesWritten,totalBytesExpectedToWrite);
         }
@@ -217,14 +217,14 @@
 - (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
                                      params:(NSDictionary *)params
                                    filePath:(NSString *)filePath
-                                    process:(void (^)(int64_t readBytes, int64_t totalBytes))process
+                                    process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
                                    complete:(void (^)(BOOL successed, NSDictionary *response))complete
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
     
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     NSMutableURLRequest *request = [serializer requestWithMethod:@"GET" URLString:url parameters:params error:nil];
-    ALog(@"get request url: %@",[request.URL.absoluteString decode]);
+    FLOG(@"get request url: %@",[request.URL.absoluteString decode]);
     
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     operation.responseSerializer.acceptableContentTypes = nil;
@@ -240,7 +240,7 @@
             responseObject = [NSData dataWithContentsOfFile:tmpPath];
             responseObject = [NSJSONSerialization JSONObjectWithData:responseObject options:2 error:nil];
             [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
-            ALog(@"get responseObject:  %@",responseObject);
+            FLOG(@"get responseObject:  %@",responseObject);
         }else{
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
             [[NSFileManager defaultManager] moveItemAtPath:tmpPath toPath:filePath error:&moveError];
@@ -252,15 +252,14 @@
             complete?complete(false,responseObject):nil;
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        ALog(@"get error :  %@",error);
+        FLOG(@"get error :  %@",error);
         [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
         if (complete) {
             complete(false,nil);
         }
     }];
-    
-    [operation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
-        NSLog(@"download process: %.2lld%% (%lld/%lld)",100*totalBytesRead/totalBytesExpectedToRead,totalBytesRead,totalBytesExpectedToRead);
+    [operation setDownloadProgressBlock:^(NSUInteger bytesRead, NSInteger totalBytesRead, NSInteger totalBytesExpectedToRead) {
+        FLOG(@"download process: %.2d%% (%ld/%ld)",100*totalBytesRead/totalBytesExpectedToRead,(long)totalBytesRead,(long)totalBytesExpectedToRead);
         if (process) {
             process(totalBytesRead,totalBytesExpectedToRead);
         }

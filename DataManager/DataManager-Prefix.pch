@@ -24,9 +24,10 @@
 
 
 #ifdef DEBUG
-#define ALog(fmt,...)    NSLog((@"ALog: %s [Line %d] \n" fmt), __PRETTY_FUNCTION__, __LINE__,##__VA_ARGS__);
+//#define FLOG(fmt,...)    NSLog((@"ALog: %s [Line %d] \n" fmt), __PRETTY_FUNCTION__, __LINE__,##__VA_ARGS__)
+#define FLOG(fmt,...)    NSLog((@"[%@][%d] " fmt),[[NSString stringWithUTF8String:__FILE__] lastPathComponent], __LINE__,##__VA_ARGS__)
 #else
-#define ALog(str, args...) ((void)0)
+#define FLOG(str, args...) ((void)0)
 #endif
 
 
