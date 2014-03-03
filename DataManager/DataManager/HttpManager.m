@@ -111,7 +111,7 @@
     [self requestToUrl:url method:@"GET" useCache:NO params:params complete:complete];
 }
 
-- (void)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL, NSDictionary *))complete
+- (void)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
     [self requestToUrl:url method:@"GET" useCache:YES params:params complete:complete];
 }
