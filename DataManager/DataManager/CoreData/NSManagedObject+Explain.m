@@ -220,7 +220,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 }
 
 //在当前队列执行任务
-+ (NSManagedObject *)addObject:(NSDictionary *)dictionary  toTable:(NSString *)tableName
++ (NSManagedObject *)addObject:(NSDictionary *)dictionary toTable:(NSString *)tableName
 {
     NSManagedObject *oneObject = nil;
     Class class = NSClassFromString(tableName);
@@ -232,7 +232,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     return oneObject;
 }
 
-+ (NSArray *)addObjectsFromArray:(NSArray *)otherArray  toTable:(NSString *)tableName
++ (NSArray *)addObjectsFromArray:(NSArray *)otherArray toTable:(NSString *)tableName
 {
     NSMutableArray *resultArray = [[NSMutableArray alloc] init];
     
@@ -246,14 +246,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         [resultArray addObject:oneObject];
     }
     return [resultArray copy];
-}
-
-+ (void)deleteObjects:(NSArray *)manyObject
-{
-    for (NSManagedObject *object in manyObject)
-    {
-        [globalManagedObjectContext_util deleteObject:object];
-    }
 }
 
 + (NSArray *)updateTable:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params
@@ -349,7 +341,9 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     }
     actions?actions(request):nil;
     @try {
-        resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
+        @synchronized(globalManagedObjectContext_util) {
+            resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
+        }
     }
     @catch (NSException *exception) {
         NSLog(@"查询数据库出错了-->%@",exception);
@@ -358,21 +352,23 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     return resultArr;
 }
 
-
 + (void)save:(void (^)(NSError *error))complete
 {
-    NSError *error = nil;
-    @try {
+    NSError *error;
+    @synchronized(globalManagedObjectContext_util) {
         if (![globalManagedObjectContext_util save:&error]) {
             // Update to handle the error appropriately.
             NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
         }
-        complete ? complete(error) : nil;
     }
-    @catch (NSException *exception) {
-        NSLog(@"sace exception %@, %@", exception, [exception userInfo]);
-        error = [[NSError alloc] initWithDomain:@"CoreData.Save" code:1001 userInfo:exception.userInfo];
-        complete ? complete(error) : nil;
+}
+
++ (void)deleteObjects:(NSArray *)manyObject
+{
+    @synchronized(globalManagedObjectContext_util) {
+        for (NSManagedObject *object in manyObject){
+            [globalManagedObjectContext_util deleteObject:object];
+        }
     }
 }
 

@@ -30,8 +30,10 @@ NSManagedObjectModel *globalManagedObjectModel_util;
     self = [super init];
     if (self) {
         //初始化模型
-        globalManagedObjectContext_util = [self managedObjectContext];
-        globalManagedObjectModel_util = [self managedObjectModel];
+        [NSManagedObject asyncQueue:false actions:^{
+            globalManagedObjectContext_util = [self managedObjectContext];
+            globalManagedObjectModel_util = [self managedObjectModel];
+        }];
     }
     return self;
 }
