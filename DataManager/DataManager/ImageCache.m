@@ -27,13 +27,22 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
     if (!downloadTaskArray_ImageCache) {
         downloadTaskArray_ImageCache = [[NSMutableArray alloc] init];
     }
-    NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
-    url?[task setObject:url forKey:@"url"]:nil;
-    process?[task setObject:process forKey:@"process"]:nil;
-    callback?[task setObject:callback forKey:@"callback"]:nil;
-    [downloadTaskArray_ImageCache addObject:task];
     
-    [self startDownload];
+    NSString *filePath = [self getImagePathWithURL:url];
+    
+    if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+        UIImage *lastImage = [UIImage imageWithContentsOfFile:filePath];
+        lastImage.lastCacheUrl = url?url:@"";
+        callback ? callback(lastImage) : nil;
+    }else{
+        NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
+        url?[task setObject:url forKey:@"url"]:nil;
+        process?[task setObject:process forKey:@"process"]:nil;
+        callback?[task setObject:callback forKey:@"callback"]:nil;
+        [downloadTaskArray_ImageCache addObject:task];
+        
+        [self startDownload];
+    }
 }
 
 + (void)startDownload
