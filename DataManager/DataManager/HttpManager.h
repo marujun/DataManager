@@ -50,7 +50,8 @@
  字典里的key:
  1、name: 文件名称（如：demo.jpg）
  2、file: 文件   （支持四种数据类型：NSData、UIImage、NSURL、NSString）NSURL、NSString为文件路径
- 3、type: 文件类型（默认：image/jpeg）
+ 3、key : 文件对应字段的key（默认：file）
+ 4、type: 文件类型（默认：image/jpeg）
  示例： @[@{@"file":_headImg.currentBackgroundImage,@"name":@"head.jpg"}];
  */
 

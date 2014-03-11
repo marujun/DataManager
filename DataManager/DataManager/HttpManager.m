@@ -235,11 +235,12 @@
     
     NSMutableURLRequest *request = [serializer multipartFormRequestWithMethod:@"POST" URLString:url parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
         for (NSDictionary *fileItem in files) {
-            id value = [fileItem objectForKey:@"file"];    //支持四种数据类型：NSData、UIImage、NSURL、NSString
-            NSString *name = @"file";                                   //字段名称
+            id value = [fileItem objectForKey:@"file"];        //支持四种数据类型：NSData、UIImage、NSURL、NSString
+            NSString *name = [fileItem objectForKey:@"key"];            //文件字段的key
             NSString *fileName = [fileItem objectForKey:@"name"];       //文件名称
             NSString *mimeType = [fileItem objectForKey:@"type"];       //文件类型
             mimeType = mimeType ? mimeType : @"image/jpeg";
+            name = name ? name : @"file";
             
             if ([value isKindOfClass:[NSData class]]) {
                 [formData appendPartWithFileData:value name:name fileName:fileName mimeType:mimeType];
