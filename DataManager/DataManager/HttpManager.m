@@ -121,8 +121,7 @@
     [self requestToUrl:url method:@"POST" useCache:NO params:params complete:complete];
 }
 
-- (void)requestToUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache
-              params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
+- (NSMutableURLRequest *)requestWithUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache params:(NSDictionary *)params
 {
     params = [[HttpManager getRequestBodyWithParams:params] copy];
     
@@ -133,6 +132,26 @@
     if (useCache) {
         [request setCachePolicy:NSURLRequestReturnCacheDataElseLoad];
     }
+    return request;
+}
+
+- (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
+{
+    NSMutableURLRequest *request = [self requestWithUrl:url method:@"GET" useCache:true params:params];
+    
+    NSCachedURLResponse *cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
+    if (cachedResponse != nil && [[cachedResponse data] length] > 0) {
+        NSDictionary *object = [NSJSONSerialization JSONObjectWithData:cachedResponse.data options:NSJSONReadingMutableLeaves error:nil];
+        complete ? complete(true, object) : nil;
+    } else {
+        [self getCacheToUrl:url params:params complete:complete];
+    }
+}
+
+- (void)requestToUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache
+              params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
+{
+    NSMutableURLRequest *request = [self requestWithUrl:url method:method useCache:true params:params];
     
     void (^requestSuccessBlock)(AFHTTPRequestOperation *operation, id responseObject) = ^(AFHTTPRequestOperation *operation, id responseObject) {
         [self logWithOperation:operation method:method params:params];
