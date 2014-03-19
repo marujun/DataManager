@@ -32,6 +32,17 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     [oneObject setContentDictionary:dictionary?dictionary:@{}];
     return oneObject;
 }
+- (void)save
+{
+    [NSManagedObject asyncQueue:false actions:^{
+        [NSManagedObject save:nil];
+    }];
+}
+- (NSDictionary *)dictionary
+{
+    NSArray *keys = [[[self entity] attributesByName] allKeys];
+    return [[self dictionaryWithValuesForKeys:keys] mutableCopy];
+}
 
 //异步执行任务
 + (void)addObject_async:(NSDictionary *)dictionary  toTable:(NSString *)tableName complete:(void (^)(NSManagedObject *object))complete
@@ -241,6 +252,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     return oneObject;
 }
 
+
 + (NSArray *)addObjectsFromArray:(NSArray *)otherArray toTable:(NSString *)tableName
 {
     NSMutableArray *resultArray = [[NSMutableArray alloc] init];
@@ -360,6 +372,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     
     return resultArr;
 }
+
 
 + (void)save:(void (^)(NSError *error))complete
 {
