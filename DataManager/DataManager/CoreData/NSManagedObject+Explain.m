@@ -35,8 +35,17 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 - (void)save
 {
     [NSManagedObject asyncQueue:false actions:^{
+        if (!self.managedObjectContext) {
+            [globalManagedObjectContext_util insertObject:self];
+        }
         [NSManagedObject save:nil];
     }];
+}
+- (void)remove
+{
+    if (self.managedObjectContext) {
+        [NSManagedObject deleteObjects_sync:@[self]];
+    }
 }
 - (NSDictionary *)dictionary
 {
@@ -382,6 +391,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
             // Update to handle the error appropriately.
             NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
         }
+        complete ? complete(error) : nil;
     }
 }
 
