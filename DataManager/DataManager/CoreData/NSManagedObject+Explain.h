@@ -10,6 +10,9 @@
 
 @interface NSManagedObject (Explain)
 
+//通过dictionary生成一个临时的object对象但不保存到数据库中
++ (id)objectWithDictionary:(NSDictionary *)dictionary;
+
 //异步执行任务
 + (void)addObject_async:(NSDictionary *)dictionary toTable:(NSString *)tableName complete:(void (^)(NSManagedObject *object))complete;
 + (void)addObjectsFromArray_async:(NSArray *)otherArray  toTable:(NSString *)tableName complete:(void (^)(NSArray *resultArray))complete;
