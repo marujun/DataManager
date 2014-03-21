@@ -219,7 +219,7 @@
     if (operation.error) {
         FLOG(@"%@ error :  %@",[method lowercaseString],operation.error);
     }else{
-        FLOG(@"%@ responseObject:  %@",[method lowercaseString],[operation.responseString json]);
+        FLOG(@"%@ responseObject:  %@",[method lowercaseString],[operation.responseString object]);
     }
 }
 
