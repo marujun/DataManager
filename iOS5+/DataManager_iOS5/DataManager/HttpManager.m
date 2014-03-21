@@ -281,7 +281,7 @@
     
     [operation setUploadProgressBlock:^(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite) {
         float progress = (float)totalBytesWritten / totalBytesExpectedToWrite;
-        FLOG(@"download process: %.0f%% (%d/%d)",100*progress,(NSUInteger)totalBytesWritten,(NSUInteger)totalBytesExpectedToWrite);
+        FLOG(@"upload process: %.0f%% (%d/%d)",100*progress,(NSUInteger)totalBytesWritten,(NSUInteger)totalBytesExpectedToWrite);
         if (process) {
             process((NSUInteger)totalBytesWritten,(NSUInteger)totalBytesExpectedToWrite);
         }
