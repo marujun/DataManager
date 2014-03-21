@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>C70A43B8-A559-494F-893B-C825E0FFFE23</string>
+	<key>IDESourceControlProjectName</key>
+	<string>DataManager_iOS5</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>5FD06C39-5B54-4278-9852-755ACB56863E</key>
+		<string>ssh://github.com/marujun/DataManager.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>iOS5+/DataManager_iOS5/DataManager_iOS5.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>5FD06C39-5B54-4278-9852-755ACB56863E</key>
+		<string>../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>ssh://github.com/marujun/DataManager.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>5FD06C39-5B54-4278-9852-755ACB56863E</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>5FD06C39-5B54-4278-9852-755ACB56863E</string>
+			<key>IDESourceControlWCCName</key>
+			<string>DataManager</string>
+		</dict>
+	</array>
+</dict>
+</plist>

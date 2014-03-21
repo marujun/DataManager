@@ -135,14 +135,25 @@
     return request;
 }
 
+- (id)dictionaryWithData:(id)data
+{
+    NSDictionary *object = data;
+    if ([data isKindOfClass:[NSData class]]) {
+        object = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+    }
+    if ([data isKindOfClass:[NSString class]]) {
+        object = [data object];
+    }
+    return object?:data;
+}
+
 - (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
     NSMutableURLRequest *request = [self requestWithUrl:url method:@"GET" useCache:true params:params];
     
     NSCachedURLResponse *cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
     if (cachedResponse != nil && [[cachedResponse data] length] > 0) {
-        NSDictionary *object = [NSJSONSerialization JSONObjectWithData:cachedResponse.data options:NSJSONReadingMutableLeaves error:nil];
-        complete ? complete(true, object) : nil;
+        complete ? complete(true, [self dictionaryWithData:cachedResponse.data]) : nil;
     } else {
         [self getCacheToUrl:url params:params complete:complete];
     }
@@ -151,11 +162,11 @@
 - (void)requestToUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache
               params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete
 {
-    NSMutableURLRequest *request = [self requestWithUrl:url method:method useCache:true params:params];
+    NSMutableURLRequest *request = [self requestWithUrl:url method:method useCache:useCache params:params];
     
     void (^requestSuccessBlock)(AFHTTPRequestOperation *operation, id responseObject) = ^(AFHTTPRequestOperation *operation, id responseObject) {
         [self logWithOperation:operation method:method params:params];
-        complete ? complete(true,responseObject) : nil;
+        complete ? complete(true,[self dictionaryWithData:responseObject]) : nil;
     };
     void (^requestFailureBlock)(AFHTTPRequestOperation *operation, NSError *error) = ^(AFHTTPRequestOperation *operation, NSError *error) {
         [self logWithOperation:operation method:method params:params];
@@ -263,7 +274,7 @@
                                                           success:^(AFHTTPRequestOperation *operation, id responseObject) {
                                                               FLOG(@"post responseObject:  %@",responseObject);
                                                               if (complete) {
-                                                                  complete(true,responseObject);
+                                                                  complete(true,[self dictionaryWithData:responseObject]);
                                                               }
                                                           } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                                                               FLOG(@"post error :  %@",error);
@@ -313,8 +324,7 @@
         NSError *moveError = nil;
         if ([mimeTypeArray containsObject:operation.response.MIMEType]) {
             //返回的是json格式数据
-            responseObject = [NSData dataWithContentsOfFile:tmpPath];
-            responseObject = [NSJSONSerialization JSONObjectWithData:responseObject options:2 error:nil];
+            responseObject = [self dictionaryWithData:[NSData dataWithContentsOfFile:tmpPath]];
             [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
             FLOG(@"get responseObject:  %@",responseObject);
         }else{

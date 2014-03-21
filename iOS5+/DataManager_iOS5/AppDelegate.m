@@ -1,8 +1,8 @@
 //
 //  AppDelegate.m
-//  DataManager
+//  DataManager_iOS5
 //
-//  Created by 马汝军 on 14-1-23.
+//  Created by 马汝军 on 14-3-22.
 //  Copyright (c) 2014年 marujun. All rights reserved.
 //
 
@@ -12,7 +12,7 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // Override point for customization after application launch.
+    
     [CoreDataUtil launch];
     
     return YES;
