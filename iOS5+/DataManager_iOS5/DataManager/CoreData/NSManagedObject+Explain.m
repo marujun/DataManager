@@ -59,9 +59,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     [self asyncQueue:true actions:^{
         __block NSManagedObject *oneObject = [self addObject:dictionary toTable:tableName];
         [self save:^(NSError *error) { error?oneObject=nil:nil; }];
-        if (complete) {
-            complete(oneObject);
-        }
+        [self setResult:oneObject complete:complete];
     }];
 }
 + (void)addObjectsFromArray_async:(NSArray *)otherArray  toTable:(NSString *)tableName complete:(void (^)(NSArray *resultArray))complete
@@ -69,9 +67,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     [self asyncQueue:true actions:^{
         __block NSArray *resultArray = [self addObjectsFromArray:otherArray toTable:tableName];
         [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
-        if (complete) {
-            complete(resultArray);
-        }
+        [self setResult:resultArray complete:complete];
     }];
 }
 + (void)deleteObjects_async:(NSArray *)manyObject complete:(void (^)(BOOL success))complete
@@ -80,9 +76,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         [self deleteObjects:manyObject];
         __block BOOL success = true;
         [self save:^(NSError *error) { error?success=false:true; }];
-        if (complete) {
-            complete(success);
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{ complete ? complete(success) : nil; });
     }];
 }
 + (void)updateTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params complete:(void (^)(NSArray *resultArray))complete
@@ -90,9 +84,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     [self asyncQueue:true actions:^{
         __block NSArray *resultArray = [self updateTable:tableName predicate:predicate params:params];
         [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
-        if (complete) {
-            complete(resultArray);
-        }
+        [self setResult:resultArray complete:complete];
     }];
 }
 + (void)updateObject_async:(NSManagedObject *)object params:(NSDictionary *)params complete:(void (^)(NSManagedObject *object))complete
@@ -100,9 +92,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     [self asyncQueue:true actions:^{
         __block NSManagedObject *oneObject = [self updateObject:object params:params];
         [self save:^(NSError *error) { error?oneObject=nil:nil; }];
-        if (complete) {
-            complete(oneObject);
-        }
+        [self setResult:oneObject complete:complete];
     }];
 }
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSArray *result))complete
@@ -113,19 +103,24 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     [self asyncQueue:true actions:^{
         NSArray *resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil actions:actions];
-        if (complete) {
-            complete(resultArr);
-        }
+        [self setResult:resultArr complete:complete];
     }];
 }
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete
 {
     [self asyncQueue:true actions:^{
         NSArray *resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors actions:nil];
-        if (complete) {
-            complete(resultArr);
-        }
+        [self setResult:resultArr complete:complete];
     }];
+}
+
++ (void)setResult:(id)result complete:(void (^)(id obj))complete
+{
+    if (complete) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            complete(result);
+        });
+    }
 }
 
 //同步执行任务
