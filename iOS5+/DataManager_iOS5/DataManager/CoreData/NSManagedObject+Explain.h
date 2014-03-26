@@ -10,7 +10,7 @@
 
 @interface NSManagedObject (Explain)
 
-- (void)save;
+- (id)save;
 - (void)remove;
 - (NSDictionary *)dictionary;
 //通过dictionary生成一个临时的object对象但不保存到数据库中

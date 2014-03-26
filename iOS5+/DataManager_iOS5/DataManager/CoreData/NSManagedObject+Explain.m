@@ -27,12 +27,15 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 //通过dictionary生成一个临时的object对象但不保存到数据库中
 + (id)objectWithDictionary:(NSDictionary *)dictionary
 {
-    NSEntityDescription *entity = [[globalManagedObjectModel_util entitiesByName] objectForKey:NSStringFromClass([self class])];
-    NSManagedObject *oneObject = [[[self class] alloc] initWithEntity:entity insertIntoManagedObjectContext:nil];
-    [oneObject setContentDictionary:dictionary?dictionary:@{}];
+    __block NSManagedObject *oneObject = nil;
+    [NSManagedObject asyncQueue:false actions:^{
+        NSEntityDescription *entity = [[globalManagedObjectModel_util entitiesByName] objectForKey:NSStringFromClass([self class])];
+        oneObject = [[[self class] alloc] initWithEntity:entity insertIntoManagedObjectContext:nil];
+        [oneObject setContentDictionary:dictionary?dictionary:@{}];
+    }];
     return oneObject;
 }
-- (void)save
+- (id)save
 {
     [NSManagedObject asyncQueue:false actions:^{
         if (!self.managedObjectContext) {
@@ -40,6 +43,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         }
         [NSManagedObject save:nil];
     }];
+    return self;
 }
 - (void)remove
 {
