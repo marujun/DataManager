@@ -221,7 +221,8 @@
     if (operation.error) {
         FLOG(@"%@ error :  %@",[method lowercaseString],operation.error);
     }else{
-        FLOG(@"%@ responseObject:  %@",[method lowercaseString],operation.responseObject);
+        id response = [operation.responseString object]?:operation.responseString;
+        FLOG(@"%@ responseObject:  %@",[method lowercaseString],response);
     }
 }
 
@@ -272,7 +273,8 @@
     AFHTTPRequestOperation *operation = nil;
     operation = [operationManager HTTPRequestOperationWithRequest:request
                                                           success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                                                              FLOG(@"post responseObject:  %@",responseObject);
+                                                              id response = [operation.responseString object]?:operation.responseString;
+                                                              FLOG(@"post responseObject:  %@",response);
                                                               if (complete) {
                                                                   complete(true,[self dictionaryWithData:responseObject]);
                                                               }
@@ -284,7 +286,7 @@
                                                           }];
     
     [operation setUploadProgressBlock:^(NSUInteger bytesWritten, NSInteger totalBytesWritten, NSInteger totalBytesExpectedToWrite) {
-        FLOG(@"upload process: %.2d%% (%ld/%ld)",100*totalBytesWritten/totalBytesExpectedToWrite,(long)totalBytesWritten,(long)totalBytesExpectedToWrite);
+        FLOG(@"upload process: %.2ld%% (%ld/%ld)",100*totalBytesWritten/totalBytesExpectedToWrite,(long)totalBytesWritten,(long)totalBytesExpectedToWrite);
         if (process) {
             process(totalBytesWritten,totalBytesExpectedToWrite);
         }
@@ -307,8 +309,6 @@
                                     process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
                                    complete:(void (^)(BOOL successed, NSDictionary *response))complete
 {
-    params = [[HttpManager getRequestBodyWithParams:params] copy];
-    
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     NSMutableURLRequest *request = [serializer requestWithMethod:@"GET" URLString:url parameters:params error:nil];
     FLOG(@"get request url: %@",[request.URL.absoluteString decode]);
@@ -345,7 +345,7 @@
         }
     }];
     [operation setDownloadProgressBlock:^(NSUInteger bytesRead, NSInteger totalBytesRead, NSInteger totalBytesExpectedToRead) {
-        FLOG(@"download process: %.2d%% (%ld/%ld)",100*totalBytesRead/totalBytesExpectedToRead,(long)totalBytesRead,(long)totalBytesExpectedToRead);
+        FLOG(@"download process: %.2ld%% (%ld/%ld)",100*totalBytesRead/totalBytesExpectedToRead,(long)totalBytesRead,(long)totalBytesExpectedToRead);
         if (process) {
             process(totalBytesRead,totalBytesExpectedToRead);
         }

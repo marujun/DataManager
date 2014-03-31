@@ -219,7 +219,8 @@
     if (operation.error) {
         FLOG(@"%@ error :  %@",[method lowercaseString],operation.error);
     }else{
-        FLOG(@"%@ responseObject:  %@",[method lowercaseString],[operation.responseString object]);
+        id response = [operation.responseString object]?:operation.responseString;
+        FLOG(@"%@ responseObject:  %@",[method lowercaseString],response);
     }
 }
 
@@ -268,7 +269,8 @@
     AFHTTPRequestOperation *operation = nil;
     operation = [httpClient HTTPRequestOperationWithRequest:request
                                                           success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                                                              FLOG(@"post responseObject:  %@",responseObject);
+                                                              id response = [operation.responseString object]?:operation.responseString;
+                                                              FLOG(@"post responseObject:  %@",response);
                                                               if (complete) {
                                                                   complete(true,[self dictionaryWithData:responseObject]);
                                                               }
@@ -304,7 +306,7 @@
                                     process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
                                    complete:(void (^)(BOOL successed, NSDictionary *response))complete
 {
-    NSMutableURLRequest *request = [self requestWithUrl:url method:@"GET" useCache:false params:params];
+    NSMutableURLRequest *request = [httpClient requestWithMethod:@"GET" path:url parameters:params];
     
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     FLOG(@"get request url: %@",[request.URL.absoluteString decode]);
