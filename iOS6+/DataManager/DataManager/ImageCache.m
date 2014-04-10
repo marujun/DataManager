@@ -9,8 +9,9 @@
 #import "ImageCache.h"
 #import "HttpManager.h"
 
-static NSMutableArray *downloadTaskArray_ImageCache;
-static BOOL isDownloading_ImageCache;
+static NSMutableArray *downloadTaskArray_ic;
+static NSMutableDictionary *urlClassify_ic;
+static BOOL isDownloading_ic;
 
 @implementation UIImage (ImageCache)
 ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
@@ -24,22 +25,32 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
              process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
             callback:(void(^)(UIImage *image))callback
 {
-    if (!downloadTaskArray_ImageCache) {
-        downloadTaskArray_ImageCache = [[NSMutableArray alloc] init];
+    if (!downloadTaskArray_ic) {
+        downloadTaskArray_ic = [[NSMutableArray alloc] init];
     }
+    if (!urlClassify_ic) {
+        urlClassify_ic = [[NSMutableDictionary alloc] init];
+    }
+    url = url ? url : @"";
     
     NSString *filePath = [self getImagePathWithURL:url];
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         UIImage *lastImage = [UIImage imageWithContentsOfFile:filePath];
-        lastImage.lastCacheUrl = url?url:@"";
+        lastImage.lastCacheUrl = url;
         callback ? callback(lastImage) : nil;
     }else{
+        //添加到下载列表里
         NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
-        url?[task setObject:url forKey:@"url"]:nil;
+        [task setObject:url forKey:@"url"];
         process?[task setObject:process forKey:@"process"]:nil;
         callback?[task setObject:callback forKey:@"callback"]:nil;
-        [downloadTaskArray_ImageCache addObject:task];
+        [downloadTaskArray_ic addObject:task];
+        
+        //按URL分类（避免同时添加多个相似下载任务）
+        NSMutableArray *targetArray = urlClassify_ic[url]?:[NSMutableArray array];
+        [targetArray addObject:task];
+        [urlClassify_ic setObject:targetArray forKey:url];
         
         [self startDownload];
     }
@@ -47,48 +58,35 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 
 + (void)startDownload
 {
-    if (downloadTaskArray_ImageCache.count && !isDownloading_ImageCache) {
-        NSDictionary *lastObj = [downloadTaskArray_ImageCache lastObject];
-        [self downloadWithURL:lastObj[@"url"] process:lastObj[@"process"] callback:lastObj[@"callback"]];
-    }
-}
-
-+ (void)downloadWithURL:(NSString *)url
-                process:(void (^)(NSInteger readBytes, NSInteger totalBytes))process
-               callback:(void(^)(UIImage *image))callback
-{
-    NSString *filePath = [self getImagePathWithURL:url];
-    NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
-    url?[task setObject:url forKey:@"url"]:nil;
-    process?[task setObject:process forKey:@"process"]:nil;
-    callback?[task setObject:callback forKey:@"callback"]:nil;
-    isDownloading_ImageCache = true;
-    
-    if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        UIImage *lastImage = [UIImage imageWithContentsOfFile:filePath];
-        lastImage.lastCacheUrl = url?url:@"";
-        callback ? callback(lastImage) : nil;
+    if (downloadTaskArray_ic.count && !isDownloading_ic) {
+        NSString *url = [downloadTaskArray_ic lastObject][@"url"];
+        NSString *filePath = [self getImagePathWithURL:url];
         
-        [downloadTaskArray_ImageCache removeObject:task];
-        isDownloading_ImageCache = false;
-        [self startDownload];
-    }else{
+        isDownloading_ic = true;
         [[HttpManager defaultManager] downloadFromUrl:url
                                                params:nil
                                              filePath:filePath
-                                              process:process
+                                              process:^(NSInteger readBytes, NSInteger totalBytes) {
+                                                  for (NSDictionary*taskItem in urlClassify_ic[url]) {
+                                                      void(^processBlock)(NSInteger, NSInteger) = taskItem[@"process"];
+                                                      processBlock?processBlock(readBytes,totalBytes):nil;
+                                                  }
+                                              }
                                              complete:^(BOOL successed, NSDictionary *result) {
-                                                 if (callback) {
-                                                     if (successed && !result) {
-                                                         UIImage *lastImage = [UIImage imageWithContentsOfFile:filePath];
-                                                         lastImage.lastCacheUrl = url?url:@"";
-                                                         callback ? callback(lastImage) : nil;
-                                                     }else{
-                                                         callback(nil);
-                                                     }
+                                                 UIImage *lastImage = nil;
+                                                 if (successed && !result) {
+                                                     lastImage = [UIImage imageWithContentsOfFile:filePath];
+                                                     lastImage.lastCacheUrl = url;
                                                  }
-                                                 [downloadTaskArray_ImageCache removeObject:task];
-                                                 isDownloading_ImageCache = false;
+                                                 
+                                                 for (NSDictionary*taskItem in urlClassify_ic[url]) {
+                                                     void(^callbackBlock)(UIImage *) = taskItem[@"callback"];
+                                                     callbackBlock?callbackBlock(lastImage):nil;
+                                                     [downloadTaskArray_ic removeObject:taskItem];
+                                                 }
+                                                 [urlClassify_ic removeObjectForKey:url];
+                                                 
+                                                 isDownloading_ic = false;
                                                  [self startDownload];
                                              }];
     }
