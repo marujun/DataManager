@@ -38,6 +38,9 @@ objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_
 /*通过URL获取缓存图片在本地对应的路径*/
 + (NSString *)getImagePathWithURL:(NSString *)url;
 
+/*缓存图片对应的文件夹*/
++ (NSString *)cacheDirectory;
+
 @end
 
 @interface UIImageView (ImageCache)

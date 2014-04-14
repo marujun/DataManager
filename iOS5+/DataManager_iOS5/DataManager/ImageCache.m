@@ -95,13 +95,18 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 + (NSString *)getImagePathWithURL:(NSString *)url
 {
     //先创建个缓存文件夹
-    NSString *directory = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/imgcache"];
+    NSString *directory = [self cacheDirectory];
     NSFileManager *defaultManager = [NSFileManager defaultManager];
     if (![defaultManager fileExistsAtPath:directory]) {
         [defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:nil];
     }
     
     return [directory stringByAppendingPathComponent:[url md5]];
+}
+
++ (NSString *)cacheDirectory
+{
+    return [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/imgcache"];
 }
 
 @end
