@@ -15,7 +15,7 @@
 - (NSString *)md5;
 - (NSString *)encode;
 - (NSString *)decode;
-- (NSString *)object;
+- (id)object;
 @end
 
 @interface NSObject (HttpManager)
