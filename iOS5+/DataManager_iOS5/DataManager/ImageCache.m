@@ -120,7 +120,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 }
 - (void)setImageURL:(NSString *)url defaultImage:(UIImage *)defaultImage
 {
-    defaultImage ? self.image=defaultImage : nil;
+    self.image = defaultImage;
     self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {
@@ -152,7 +152,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 }
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
 {
-    defaultImage ? [self setImage:defaultImage forState:state] : nil;
+    [self setImage:defaultImage forState:state];
     self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {
@@ -180,7 +180,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 }
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
 {
-    defaultImage ? [self setBackgroundImage:defaultImage forState:state] : nil;
+    [self setBackgroundImage:defaultImage forState:state];
     self.lastCacheUrl = url;
     
     [UIImage imageWithURL:url callback:^(UIImage *image) {

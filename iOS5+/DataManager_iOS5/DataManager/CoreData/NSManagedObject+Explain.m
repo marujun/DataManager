@@ -35,7 +35,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     }];
     return oneObject;
 }
-- (id)save
+- (id)saveObject
 {
     [NSManagedObject asyncQueue:false actions:^{
         if (!self.managedObjectContext) {
@@ -128,7 +128,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 }
 
 //同步执行任务
-+ (NSManagedObject *)addObject_sync:(NSDictionary *)dictionary  toTable:(NSString *)tableName
++ (id)addObject_sync:(NSDictionary *)dictionary  toTable:(NSString *)tableName
 {
     __block NSManagedObject *oneObject = nil;
     [self asyncQueue:false actions:^{
@@ -164,7 +164,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     }];
     return resultArray;
 }
-+ (NSManagedObject *)updateObject_sync:(NSManagedObject *)object params:(NSDictionary *)params
++ (id)updateObject_sync:(NSManagedObject *)object params:(NSDictionary *)params
 {
     __block NSManagedObject *oneObject = nil;
     [self asyncQueue:false actions:^{
@@ -248,7 +248,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 }
 
 //在当前队列执行任务
-+ (NSManagedObject *)addObject:(NSDictionary *)dictionary toTable:(NSString *)tableName
++ (id)addObject:(NSDictionary *)dictionary toTable:(NSString *)tableName
 {
     NSManagedObject *oneObject = nil;
     Class class = NSClassFromString(tableName);
@@ -295,7 +295,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     return queryArr;
 }
 
-+ (NSManagedObject *)updateObject:(NSManagedObject *)object params:(NSDictionary *)params
++ (id)updateObject:(NSManagedObject *)object params:(NSDictionary *)params
 {
     for (NSString *key in params.allKeys)
     {

@@ -10,7 +10,7 @@
 
 @interface NSManagedObject (Explain)
 
-- (id)save;
+- (id)saveObject;
 - (void)remove;
 - (NSDictionary *)dictionary;
 //通过dictionary生成一个临时的object对象但不保存到数据库中
@@ -27,11 +27,11 @@
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete;
 
 //同步执行任务
-+ (NSManagedObject *)addObject_sync:(NSDictionary *)dictionary toTable:(NSString *)tableName;
++ (id)addObject_sync:(NSDictionary *)dictionary toTable:(NSString *)tableName;
 + (NSArray *)addObjectsFromArray_sync:(NSArray *)otherArray  toTable:(NSString *)tableName;
 + (BOOL)deleteObjects_sync:(NSArray *)manyObject;
 + (NSArray *)updateTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params;
-+ (NSManagedObject *)updateObject_sync:(NSManagedObject *)object params:(NSDictionary *)params;
++ (id)updateObject_sync:(NSManagedObject *)object params:(NSDictionary *)params;
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate;
 + (NSArray *)getTable_sync:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions;
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
