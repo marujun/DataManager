@@ -81,3 +81,14 @@ objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback;
 
 @end
+
+
+@interface NSFileManager (ImageCache)
+
+/*单个文件的大小*/
++ (long long)fileSizeAtPath:(NSString*)filePath;
+
+/*遍历文件夹获得文件夹大小，返回多少M*/
++ (float)folderSizeAtPath:(NSString*)folderPath;
+
+@end
