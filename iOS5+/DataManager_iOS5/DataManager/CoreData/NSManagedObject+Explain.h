@@ -10,7 +10,7 @@
 
 @interface NSManagedObject (Explain)
 
-- (id)saveObject;
+- (id)save;
 - (void)remove;
 - (NSDictionary *)dictionary;
 //通过dictionary生成一个临时的object对象但不保存到数据库中
@@ -25,6 +25,8 @@
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSArray *result))complete;
 + (void)getTable_async:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions complete:(void (^)(NSArray *result))complete;
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete;
++ (void)countTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSNumber *count))complete;
+
 
 //同步执行任务
 + (id)addObject_sync:(NSDictionary *)dictionary toTable:(NSString *)tableName;
@@ -35,6 +37,7 @@
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate;
 + (NSArray *)getTable_sync:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions;
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors;
++ (NSUInteger)countTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate;
 
 //是否在异步队列中操作数据库
 + (void)asyncQueue:(BOOL)async actions:(void (^)(void))actions;

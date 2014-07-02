@@ -35,7 +35,7 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     }];
     return oneObject;
 }
-- (id)saveObject
+- (id)save
 {
     [NSManagedObject asyncQueue:false actions:^{
         if (!self.managedObjectContext) {
@@ -97,6 +97,13 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         __block NSManagedObject *oneObject = [self updateObject:object params:params];
         [self save:^(NSError *error) { error?oneObject=nil:nil; }];
         [self setResult:oneObject complete:complete];
+    }];
+}
++ (void)countTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSNumber *count))complete
+{
+    [self asyncQueue:true actions:^{
+        NSNumber *count = @([self countTable:tableName predicate:predicate]);
+        [self setResult:count complete:complete];
     }];
 }
 + (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSArray *result))complete
@@ -172,6 +179,14 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
         [self save:^(NSError *error) { error?oneObject=nil:nil; }];
     }];
     return oneObject;
+}
++ (NSUInteger)countTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate
+{
+    __block NSUInteger count = 0;
+    [self asyncQueue:false actions:^{
+        count = [self countTable:tableName predicate:predicate];
+    }];
+    return count;
 }
 + (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate
 {
@@ -380,6 +395,24 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     
     return resultArr;
 }
+
+
++ (NSUInteger)countTable:(NSString *)tableName predicate:(NSPredicate *)predicate
+{
+    NSFetchRequest *request = [[NSFetchRequest alloc]init];
+    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
+    [request setEntity:description];
+    if (predicate) {
+        [request setPredicate:predicate];
+    }
+    
+    NSUInteger count = [globalManagedObjectContext_util countForFetchRequest:request error:nil];
+    if(count == NSNotFound) {
+        return 0;
+    }
+    return count;
+}
+
 
 
 + (void)save:(void (^)(NSError *error))complete
