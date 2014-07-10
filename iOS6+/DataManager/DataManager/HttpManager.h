@@ -31,7 +31,7 @@
  2、ReachableViaWWAN - 移动网络(2G、3G)
  3、ReachableViaWiFi - WIFI网络
  */
-+ (NetworkStatus)networkStatus;
+- (NetworkStatus)networkStatus;
 
 //GET 请求
 - (void)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, NSDictionary *result))complete;

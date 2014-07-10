@@ -76,6 +76,7 @@
 
 @interface HttpManager ()
 {
+    Reachability *reachability;
     AFHTTPRequestOperationManager *operationManager;
 }
 @end
@@ -88,11 +89,19 @@
         operationManager = [AFHTTPRequestOperationManager manager];
         operationManager.responseSerializer.acceptableContentTypes = nil;
         
+        reachability = [Reachability reachabilityWithHostname:@"www.baidu.com"];
+        [reachability startNotifier];
+        
         NSURLCache *urlCache = [NSURLCache sharedURLCache];
         [urlCache setMemoryCapacity:5*1024*1024];  /* 设置缓存的大小为5M*/
         [NSURLCache setSharedURLCache:urlCache];
     }
     return self;
+}
+
+- (NetworkStatus)networkStatus
+{
+    return [reachability currentReachabilityStatus];
 }
 
 
@@ -285,10 +294,11 @@
                                                               }
                                                           }];
     
-    [operation setUploadProgressBlock:^(NSUInteger bytesWritten, NSInteger totalBytesWritten, NSInteger totalBytesExpectedToWrite) {
-        FLOG(@"upload process: %.2ld%% (%ld/%ld)",100*totalBytesWritten/totalBytesExpectedToWrite,(long)totalBytesWritten,(long)totalBytesExpectedToWrite);
+    [operation setUploadProgressBlock:^(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite) {
+        float progress = (float)totalBytesWritten / totalBytesExpectedToWrite;
+        FLOG(@"upload process: %.0f%% (%lld/%lld)",100*progress,totalBytesWritten,totalBytesExpectedToWrite);
         if (process) {
-            process(totalBytesWritten,totalBytesExpectedToWrite);
+            process((NSUInteger)totalBytesWritten,(NSUInteger)totalBytesExpectedToWrite);
         }
     }];
     [operation start];
@@ -344,10 +354,11 @@
             complete(false,nil);
         }
     }];
-    [operation setDownloadProgressBlock:^(NSUInteger bytesRead, NSInteger totalBytesRead, NSInteger totalBytesExpectedToRead) {
-        FLOG(@"download process: %.2ld%% (%ld/%ld)",100*totalBytesRead/totalBytesExpectedToRead,(long)totalBytesRead,(long)totalBytesExpectedToRead);
+    [operation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
+        float progress = (float)totalBytesRead / totalBytesExpectedToRead;
+        FLOG(@"download process: %.0f%% (%lld/%lld)",100*progress,totalBytesRead,totalBytesExpectedToRead);
         if (process) {
-            process(totalBytesRead,totalBytesExpectedToRead);
+            process((NSUInteger)totalBytesRead,(NSUInteger)totalBytesExpectedToRead);
         }
     }];
     
@@ -377,15 +388,6 @@
     [requestBody setObject:@"ios" forKey:@"genus"];
     
     return requestBody;
-}
-
-+ (NetworkStatus)networkStatus
-{
-    Reachability *reachability = [Reachability reachabilityWithHostname:@"www.apple.com"];
-    // NotReachable     - 没有网络连接
-    // ReachableViaWWAN - 移动网络(2G、3G)
-    // ReachableViaWiFi - WIFI网络
-    return [reachability currentReachabilityStatus];
 }
 
 @end
