@@ -33,6 +33,12 @@ NSManagedObjectModel *globalManagedObjectModel_util;
         [NSManagedObject asyncQueue:false actions:^{
             globalManagedObjectContext_util = [self managedObjectContext];
             globalManagedObjectModel_util = [self managedObjectModel];
+            
+            //NSManagedStoreCoordinator 有缓存数据，重新填充(强制性从磁盘装载)
+//            [globalManagedObjectContext_util setStalenessInterval:0.0];
+            
+            //NSManagedObjectContext 合并政策失败的核心数据是无法完成合并(设置上下文对象合并)
+            [globalManagedObjectContext_util setMergePolicy:NSMergeByPropertyObjectTrumpMergePolicy];
         }];
     }
     return self;
