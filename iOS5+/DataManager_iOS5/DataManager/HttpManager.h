@@ -11,6 +11,10 @@
 #import "AFNetworking.h"
 #import "Reachability.h"
 
+@interface MyDispatch : NSObject
+void my_dispatch_async(NSString *name, dispatch_block_t block);
+@end
+
 @interface NSString (HttpManager)
 - (NSString *)md5;
 - (NSString *)encode;

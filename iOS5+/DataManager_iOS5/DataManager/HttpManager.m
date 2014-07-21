@@ -8,6 +8,17 @@
 
 #import "HttpManager.h"
 
+@implementation MyDispatch
+void my_dispatch_async(NSString *name, dispatch_block_t block) {
+    dispatch_async(dispatch_queue_create(name.UTF8String, DISPATCH_QUEUE_SERIAL), ^{
+        if (![NSThread isMainThread]) {
+            [[NSThread currentThread] setName:name];
+        }
+        block ? block() : nil;
+    });
+}
+@end
+
 @implementation NSString (HttpManager)
 - (NSString *)md5
 {

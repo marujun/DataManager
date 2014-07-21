@@ -40,19 +40,21 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
         lastImage.lastCacheUrl = url;
         callback ? callback(lastImage) : nil;
     }else{
-        //添加到下载列表里
-        NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
-        [task setObject:url forKey:@"url"];
-        process?[task setObject:process forKey:@"process"]:nil;
-        callback?[task setObject:callback forKey:@"callback"]:nil;
-        [downloadTaskArray_ic addObject:task];
-        
-        //按URL分类（避免同时添加多个相似下载任务）
-        NSMutableArray *targetArray = urlClassify_ic[url]?:[NSMutableArray array];
-        [targetArray addObject:task];
-        [urlClassify_ic setObject:targetArray forKey:url];
-        
-        [self startDownload];
+        @synchronized(urlClassify_ic){
+            //添加到下载列表里
+            NSMutableDictionary *task = [[NSMutableDictionary alloc] init];
+            [task setObject:url forKey:@"url"];
+            process?[task setObject:process forKey:@"process"]:nil;
+            callback?[task setObject:callback forKey:@"callback"]:nil;
+            [downloadTaskArray_ic addObject:task];
+            
+            //按URL分类（避免同时添加多个相似下载任务）
+            NSMutableArray *targetArray = urlClassify_ic[url]?:[NSMutableArray array];
+            [targetArray addObject:task];
+            [urlClassify_ic setObject:targetArray forKey:url];
+            
+            [self startDownload];
+        }
     }
 }
 
@@ -207,28 +209,19 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 @implementation NSFileManager (ImageCache)
 
 /*单个文件的大小*/
-+ (long long)fileSizeAtPath:(NSString*)filePath
-{
-    NSFileManager* manager = [NSFileManager defaultManager];
-    if ([manager fileExistsAtPath:filePath]){
-        return [[manager attributesOfItemAtPath:filePath error:nil] fileSize];
++ (long long)fileSizeAtPath:(NSString*) filePath{
+    struct stat st;
+    if(lstat([filePath cStringUsingEncoding:NSUTF8StringEncoding], &st) == 0){
+        return st.st_size;
     }
     return 0;
 }
 
 /*遍历文件夹获得文件夹大小，返回多少M*/
-+ (float)folderSizeAtPath:(NSString*)folderPath
++ (float)folderSizeAtPath: (NSString *)folderPath
 {
-    NSFileManager* manager = [NSFileManager defaultManager];
-    if (![manager fileExistsAtPath:folderPath]) return 0;
-    NSEnumerator *childFilesEnumerator = [[manager subpathsAtPath:folderPath] objectEnumerator];
-    NSString* fileName;
-    long long folderSize = 0;
-    while ((fileName = [childFilesEnumerator nextObject]) != nil){
-        NSString* fileAbsolutePath = [folderPath stringByAppendingPathComponent:fileName];
-        folderSize += [self fileSizeAtPath:fileAbsolutePath];
-    }
-    return folderSize/(1024.0*1024.0);
+    const char* path = [folderPath cStringUsingEncoding:NSUTF8StringEncoding];
+    return [self _folderSizeAtPath:path]/(1024.0*1024.0);
 }
 
 /*计算文件的MD5值(比较两个文件是否一样)*/
@@ -303,6 +296,39 @@ done:
         CFRelease(fileURL);
     }
     return result;
+}
+
++ (long long)_folderSizeAtPath:(const char*)folderPath
+{
+    long long folderSize = 0;
+    DIR* dir = opendir(folderPath);
+    if (dir == NULL) return 0;
+    struct dirent* child;
+    while ((child = readdir(dir))!=NULL) {
+        if (child->d_type == DT_DIR && ((child->d_name[0] == '.' && child->d_name[1] == 0) || // 忽略目录 .
+                                        (child->d_name[0] == '.' && child->d_name[1] == '.' && child->d_name[2] == 0) // 忽略目录 ..
+                                        )) continue;
+        
+        int folderPathLength = strlen(folderPath);
+        char childPath[1024]; // 子文件的路径地址
+        stpcpy(childPath, folderPath);
+        if (folderPath[folderPathLength-1] != '/'){
+            childPath[folderPathLength] = '/';
+            folderPathLength++;
+        }
+        stpcpy(childPath+folderPathLength, child->d_name);
+        childPath[folderPathLength + child->d_namlen] = 0;
+        if (child->d_type == DT_DIR){ // directory
+            folderSize += [self _folderSizeAtPath:childPath]; // 递归调用子目录
+            // 把目录本身所占的空间也加上
+            struct stat st;
+            if(lstat(childPath, &st) == 0) folderSize += st.st_size;
+        }else if (child->d_type == DT_REG || child->d_type == DT_LNK){ // file or link
+            struct stat st;
+            if(lstat(childPath, &st) == 0) folderSize += st.st_size;
+        }
+    }
+    return folderSize;
 }
 
 @end

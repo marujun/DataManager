@@ -10,6 +10,8 @@
 #import <UIKit/UIImageView.h>
 #import <UIKit/UIButton.h>
 #import <objc/runtime.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #define ADD_DYNAMIC_PROPERTY(PROPERTY_TYPE,PROPERTY_NAME,SETTER_NAME) \
 @dynamic PROPERTY_NAME ; \
