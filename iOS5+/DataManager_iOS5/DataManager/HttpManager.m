@@ -29,18 +29,23 @@
 - (NSString *)encode
 {
     NSString *outputStr = (NSString *)
-    CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
+    CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(NULL,
                                                               (CFStringRef)self,
                                                               NULL,
-                                                              NULL,
+                                                              (CFStringRef)@"!*'();:@&amp;=+$,/?%#[]",
                                                               kCFStringEncodingUTF8));
+    outputStr = [outputStr stringByReplacingOccurrencesOfString:@"<null>" withString:@""];
     return outputStr;
 }
 - (NSString *)decode
 {
-    NSMutableString *outputStr = [NSMutableString stringWithString:self];
-    [outputStr replaceOccurrencesOfString:@"+" withString:@" " options:NSLiteralSearch range:NSMakeRange(0, [outputStr length])];
-    return [outputStr stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    NSString *outputStr = (NSString *)
+    CFBridgingRelease(CFURLCreateStringByReplacingPercentEscapesUsingEncoding(
+                                                                              kCFAllocatorDefault,
+                                                                              (__bridge CFStringRef)self,
+                                                                              CFSTR(""),
+                                                                              kCFStringEncodingUTF8));
+    return outputStr;
 }
 - (id)object
 {
