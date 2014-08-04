@@ -78,7 +78,11 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
                                                  UIImage *lastImage = nil;
                                                  if (successed && !result) {
                                                      lastImage = [UIImage imageWithContentsOfFile:filePath];
-                                                     lastImage.lastCacheUrl = url;
+                                                     if (lastImage) {
+                                                         lastImage.lastCacheUrl = url;
+                                                     }else{
+                                                         [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+                                                     }
                                                  }
                                                  
                                                  for (NSDictionary*taskItem in urlClassify_ic[url]) {
