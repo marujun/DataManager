@@ -100,6 +100,10 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 
 + (NSString *)getImagePathWithURL:(NSString *)url
 {
+    if ([url hasPrefix:@"/var/mobile/Applications"]) {
+        return url;
+    }
+    
     //先创建个缓存文件夹
     NSString *directory = [self cacheDirectory];
     NSFileManager *defaultManager = [NSFileManager defaultManager];
