@@ -84,6 +84,12 @@ objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_
 
 @end
 
+@interface NSData (ImageCache)
+
+/*计算NSData的MD5值*/
+- (NSString *)md5;
+
+@end
 
 @interface NSFileManager (ImageCache)
 

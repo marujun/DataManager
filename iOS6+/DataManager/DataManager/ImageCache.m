@@ -214,6 +214,29 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 @end
 
 
+@implementation NSData (ImageCache)
+
+/*计算NSData的MD5值*/
+- (NSString *)md5
+{
+    if(self == nil || [self length] == 0){
+        return nil;
+    }
+    
+    unsigned char md5Buffer[CC_MD5_DIGEST_LENGTH];
+    CC_MD5(self.bytes, (CC_LONG)self.length, md5Buffer);
+    
+    NSMutableString *output = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
+    for(int i = 0; i < CC_MD5_DIGEST_LENGTH; i++){
+        [output appendFormat:@"%02x",md5Buffer[i]];
+    }
+    
+    return output;
+}
+
+@end
+
+
 @implementation NSFileManager (ImageCache)
 
 /*单个文件的大小*/
