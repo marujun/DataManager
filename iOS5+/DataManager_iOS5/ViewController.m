@@ -22,7 +22,7 @@
     //使用方法如下：model中有2个表User、Bank；其中User表中的RelationShip：user对应多条Bank记录
     
     /* 清空User表 */
-    [NSManagedObject cleanTable:NSStringFromClass([User class])];
+    [User cleanTable];
     
     /* 像User表插入一条数据 */
     NSDictionary *userDic = @{@"name":@"jizhi",@"age":@(23),@"bank":@[@{@"account":@"111111"},@{@"account":@"222222"}]};

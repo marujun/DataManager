@@ -20,8 +20,8 @@
 @interface NSManagedObject (Magic)
 
 /*获取表中所有数据*/
-+ (NSArray *)getTable:(NSString *)tableName;
++ (NSArray *)getAllObjets;
 /*清空表*/
-+ (void)cleanTable:(NSString *)tableName;
++ (void)cleanTable;
 
 @end
