@@ -45,6 +45,15 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     }];
     return self;
 }
+- (id)relateContext
+{
+    [NSManagedObject asyncQueue:false actions:^{
+        if (!self.managedObjectContext) {
+            [globalManagedObjectContext_util insertObject:self];
+        }
+    }];
+    return self;
+}
 - (void)remove
 {
     if (self.managedObjectContext) {
