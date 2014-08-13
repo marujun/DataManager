@@ -12,8 +12,11 @@
 
 - (id)save;
 - (void)remove;
-- (id)relateContext;
 - (NSDictionary *)dictionary;
+
+- (id)relateContext;
++ (void)syncContext;
+
 //通过dictionary生成一个临时的object对象但不保存到数据库中
 + (id)objectWithDictionary:(NSDictionary *)dictionary;
 

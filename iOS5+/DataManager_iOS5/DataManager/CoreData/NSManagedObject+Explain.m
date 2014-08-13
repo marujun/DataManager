@@ -45,15 +45,6 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
     }];
     return self;
 }
-- (id)relateContext
-{
-    [NSManagedObject asyncQueue:false actions:^{
-        if (!self.managedObjectContext) {
-            [globalManagedObjectContext_util insertObject:self];
-        }
-    }];
-    return self;
-}
 - (void)remove
 {
     if (self.managedObjectContext) {
@@ -64,6 +55,22 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     NSArray *keys = [[[self entity] attributesByName] allKeys];
     return [[self dictionaryWithValuesForKeys:keys] mutableCopy];
+}
+
+- (id)relateContext
+{
+    [NSManagedObject asyncQueue:false actions:^{
+        if (!self.managedObjectContext) {
+            [globalManagedObjectContext_util insertObject:self];
+        }
+    }];
+    return self;
+}
++ (void)syncContext
+{
+    [NSManagedObject asyncQueue:true actions:^{
+        [NSManagedObject save:nil];
+    }];
 }
 
 //异步执行任务
