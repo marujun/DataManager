@@ -100,6 +100,10 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 
 + (NSString *)getImagePathWithURL:(NSString *)url
 {
+    if (!url || !url.length) {
+        return nil;
+    }
+    
     if ([url hasPrefix:@"/var/mobile/Applications"]) {
         return url;
     }
