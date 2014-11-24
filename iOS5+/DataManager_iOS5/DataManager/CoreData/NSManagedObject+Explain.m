@@ -435,10 +435,15 @@ extern NSManagedObjectModel *globalManagedObjectModel_util;
 {
     NSError *error;
     @synchronized(globalManagedObjectContext_util) {
-        if (![globalManagedObjectContext_util save:&error]) {
-            // Update to handle the error appropriately.
-            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        }
+        
+        //防止频繁进行数据库同步
+        [NSObject cancelPreviousPerformRequestsWithTarget:globalManagedObjectContext_util selector:@selector(save:) object:nil];
+        [globalManagedObjectContext_util performSelector:@selector(save:) withObject:nil afterDelay:0.1];
+        
+//        if (![globalManagedObjectContext_util save:&error]) {
+//            // Update to handle the error appropriately.
+//            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
+//        }
         complete ? complete(error) : nil;
     }
 }
