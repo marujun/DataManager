@@ -31,7 +31,11 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
     if (!urlClassify_ic) {
         urlClassify_ic = [[NSMutableDictionary alloc] init];
     }
-    url = url ? url : @"";
+    
+    if(!url || !url.length){
+        callback ? callback(nil) : nil;
+        return;
+    }
     
     NSString *filePath = [self getImagePathWithURL:url];
     
@@ -101,7 +105,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,lastCacheUrl,setLastCacheUrl);
 + (NSString *)getImagePathWithURL:(NSString *)url
 {
     if (!url || !url.length) {
-        return nil;
+        return @"";
     }
     
     if ([url hasPrefix:@"/var/mobile/Applications"]) {
