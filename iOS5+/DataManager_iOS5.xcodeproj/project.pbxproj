@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A4525D21A28106700BA7499 /* NLCoreData.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525C71A28106700BA7499 /* NLCoreData.m */; };
+		0A4525D41A28106700BA7499 /* NSFetchedResultsController+NLCoreData.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525CB1A28106700BA7499 /* NSFetchedResultsController+NLCoreData.m */; };
+		0A4525D51A28106700BA7499 /* NSFetchRequest+NLCoreData.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525CD1A28106700BA7499 /* NSFetchRequest+NLCoreData.m */; };
+		0A4525D61A28106700BA7499 /* NSManagedObject+NLCoreData.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525CF1A28106700BA7499 /* NSManagedObject+NLCoreData.m */; };
+		0A4525D71A28106700BA7499 /* NSManagedObjectContext+NLCoreData.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525D11A28106700BA7499 /* NSManagedObjectContext+NLCoreData.m */; };
+		0A4525DA1A28511B00BA7499 /* Bank.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525D91A28511B00BA7499 /* Bank.m */; };
+		0A4525DD1A28549D00BA7499 /* User.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A4525DC1A28549D00BA7499 /* User.m */; };
 		0A7F6F1418DC9BF700465249 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7F6F1318DC9BF700465249 /* Foundation.framework */; };
 		0A7F6F1618DC9BF700465249 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7F6F1518DC9BF700465249 /* CoreGraphics.framework */; };
 		0A7F6F1818DC9BF700465249 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7F6F1718DC9BF700465249 /* UIKit.framework */; };
@@ -32,15 +39,11 @@
 		0A7F6F7C18DC9C4500465249 /* AFURLConnectionOperation.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F5C18DC9C4500465249 /* AFURLConnectionOperation.m */; };
 		0A7F6F7D18DC9C4500465249 /* AFXMLRequestOperation.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F5E18DC9C4500465249 /* AFXMLRequestOperation.m */; };
 		0A7F6F7E18DC9C4500465249 /* Reachability.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6018DC9C4500465249 /* Reachability.m */; };
-		0A7F6F7F18DC9C4500465249 /* CoreDataUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6318DC9C4500465249 /* CoreDataUtil.m */; };
 		0A7F6F8018DC9C4500465249 /* NSManagedObject+Explain.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6518DC9C4500465249 /* NSManagedObject+Explain.m */; };
-		0A7F6F8118DC9C4500465249 /* NSManagedObject+Magic.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6718DC9C4500465249 /* NSManagedObject+Magic.m */; };
 		0A7F6F8218DC9C4500465249 /* HttpManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6A18DC9C4500465249 /* HttpManager.m */; };
 		0A7F6F8318DC9C4500465249 /* ImageCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6C18DC9C4500465249 /* ImageCache.m */; };
-		0A7F6F8418DC9C4500465249 /* Bank.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F6F18DC9C4500465249 /* Bank.m */; };
 		0A7F6F8518DC9C4500465249 /* BaseObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F7118DC9C4500465249 /* BaseObject.m */; };
 		0A7F6F8618DC9C4500465249 /* models.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F7218DC9C4500465249 /* models.xcdatamodeld */; };
-		0A7F6F8718DC9C4500465249 /* User.m in Sources */ = {isa = PBXBuildFile; fileRef = 0A7F6F7518DC9C4500465249 /* User.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +57,20 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0A4525C61A28106700BA7499 /* NLCoreData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NLCoreData.h; sourceTree = "<group>"; };
+		0A4525C71A28106700BA7499 /* NLCoreData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NLCoreData.m; sourceTree = "<group>"; };
+		0A4525CA1A28106700BA7499 /* NSFetchedResultsController+NLCoreData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSFetchedResultsController+NLCoreData.h"; sourceTree = "<group>"; };
+		0A4525CB1A28106700BA7499 /* NSFetchedResultsController+NLCoreData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSFetchedResultsController+NLCoreData.m"; sourceTree = "<group>"; };
+		0A4525CC1A28106700BA7499 /* NSFetchRequest+NLCoreData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSFetchRequest+NLCoreData.h"; sourceTree = "<group>"; };
+		0A4525CD1A28106700BA7499 /* NSFetchRequest+NLCoreData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSFetchRequest+NLCoreData.m"; sourceTree = "<group>"; };
+		0A4525CE1A28106700BA7499 /* NSManagedObject+NLCoreData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSManagedObject+NLCoreData.h"; sourceTree = "<group>"; };
+		0A4525CF1A28106700BA7499 /* NSManagedObject+NLCoreData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSManagedObject+NLCoreData.m"; sourceTree = "<group>"; };
+		0A4525D01A28106700BA7499 /* NSManagedObjectContext+NLCoreData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSManagedObjectContext+NLCoreData.h"; sourceTree = "<group>"; };
+		0A4525D11A28106700BA7499 /* NSManagedObjectContext+NLCoreData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSManagedObjectContext+NLCoreData.m"; sourceTree = "<group>"; };
+		0A4525D81A28511B00BA7499 /* Bank.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Bank.h; sourceTree = "<group>"; };
+		0A4525D91A28511B00BA7499 /* Bank.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Bank.m; sourceTree = "<group>"; };
+		0A4525DB1A28549D00BA7499 /* User.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = User.h; sourceTree = "<group>"; };
+		0A4525DC1A28549D00BA7499 /* User.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = User.m; sourceTree = "<group>"; };
 		0A7F6F1018DC9BF700465249 /* DataManager_iOS5.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DataManager_iOS5.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A7F6F1318DC9BF700465249 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		0A7F6F1518DC9BF700465249 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -94,24 +111,16 @@
 		0A7F6F5E18DC9C4500465249 /* AFXMLRequestOperation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AFXMLRequestOperation.m; sourceTree = "<group>"; };
 		0A7F6F5F18DC9C4500465249 /* Reachability.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Reachability.h; sourceTree = "<group>"; };
 		0A7F6F6018DC9C4500465249 /* Reachability.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Reachability.m; sourceTree = "<group>"; };
-		0A7F6F6218DC9C4500465249 /* CoreDataUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataUtil.h; sourceTree = "<group>"; };
-		0A7F6F6318DC9C4500465249 /* CoreDataUtil.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataUtil.m; sourceTree = "<group>"; };
 		0A7F6F6418DC9C4500465249 /* NSManagedObject+Explain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSManagedObject+Explain.h"; sourceTree = "<group>"; };
 		0A7F6F6518DC9C4500465249 /* NSManagedObject+Explain.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSManagedObject+Explain.m"; sourceTree = "<group>"; };
-		0A7F6F6618DC9C4500465249 /* NSManagedObject+Magic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSManagedObject+Magic.h"; sourceTree = "<group>"; };
-		0A7F6F6718DC9C4500465249 /* NSManagedObject+Magic.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSManagedObject+Magic.m"; sourceTree = "<group>"; };
 		0A7F6F6818DC9C4500465249 /* DataManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataManager.h; sourceTree = "<group>"; };
 		0A7F6F6918DC9C4500465249 /* HttpManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HttpManager.h; sourceTree = "<group>"; };
 		0A7F6F6A18DC9C4500465249 /* HttpManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HttpManager.m; sourceTree = "<group>"; };
 		0A7F6F6B18DC9C4500465249 /* ImageCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImageCache.h; sourceTree = "<group>"; };
 		0A7F6F6C18DC9C4500465249 /* ImageCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ImageCache.m; sourceTree = "<group>"; };
-		0A7F6F6E18DC9C4500465249 /* Bank.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Bank.h; sourceTree = "<group>"; };
-		0A7F6F6F18DC9C4500465249 /* Bank.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Bank.m; sourceTree = "<group>"; };
 		0A7F6F7018DC9C4500465249 /* BaseObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BaseObject.h; sourceTree = "<group>"; };
 		0A7F6F7118DC9C4500465249 /* BaseObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BaseObject.m; sourceTree = "<group>"; };
 		0A7F6F7318DC9C4500465249 /* models.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = models.xcdatamodel; sourceTree = "<group>"; };
-		0A7F6F7418DC9C4500465249 /* User.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = User.h; sourceTree = "<group>"; };
-		0A7F6F7518DC9C4500465249 /* User.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = User.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -260,12 +269,18 @@
 		0A7F6F6118DC9C4500465249 /* CoreData */ = {
 			isa = PBXGroup;
 			children = (
-				0A7F6F6218DC9C4500465249 /* CoreDataUtil.h */,
-				0A7F6F6318DC9C4500465249 /* CoreDataUtil.m */,
+				0A4525C61A28106700BA7499 /* NLCoreData.h */,
+				0A4525C71A28106700BA7499 /* NLCoreData.m */,
+				0A4525CA1A28106700BA7499 /* NSFetchedResultsController+NLCoreData.h */,
+				0A4525CB1A28106700BA7499 /* NSFetchedResultsController+NLCoreData.m */,
+				0A4525CC1A28106700BA7499 /* NSFetchRequest+NLCoreData.h */,
+				0A4525CD1A28106700BA7499 /* NSFetchRequest+NLCoreData.m */,
+				0A4525CE1A28106700BA7499 /* NSManagedObject+NLCoreData.h */,
+				0A4525CF1A28106700BA7499 /* NSManagedObject+NLCoreData.m */,
+				0A4525D01A28106700BA7499 /* NSManagedObjectContext+NLCoreData.h */,
+				0A4525D11A28106700BA7499 /* NSManagedObjectContext+NLCoreData.m */,
 				0A7F6F6418DC9C4500465249 /* NSManagedObject+Explain.h */,
 				0A7F6F6518DC9C4500465249 /* NSManagedObject+Explain.m */,
-				0A7F6F6618DC9C4500465249 /* NSManagedObject+Magic.h */,
-				0A7F6F6718DC9C4500465249 /* NSManagedObject+Magic.m */,
 			);
 			path = CoreData;
 			sourceTree = "<group>";
@@ -273,13 +288,13 @@
 		0A7F6F6D18DC9C4500465249 /* model */ = {
 			isa = PBXGroup;
 			children = (
-				0A7F6F6E18DC9C4500465249 /* Bank.h */,
-				0A7F6F6F18DC9C4500465249 /* Bank.m */,
 				0A7F6F7018DC9C4500465249 /* BaseObject.h */,
 				0A7F6F7118DC9C4500465249 /* BaseObject.m */,
 				0A7F6F7218DC9C4500465249 /* models.xcdatamodeld */,
-				0A7F6F7418DC9C4500465249 /* User.h */,
-				0A7F6F7518DC9C4500465249 /* User.m */,
+				0A4525DB1A28549D00BA7499 /* User.h */,
+				0A4525DC1A28549D00BA7499 /* User.m */,
+				0A4525D81A28511B00BA7499 /* Bank.h */,
+				0A4525D91A28511B00BA7499 /* Bank.m */,
 			);
 			path = model;
 			sourceTree = "<group>";
@@ -386,22 +401,25 @@
 				0A7F6F2A18DC9BF700465249 /* ViewController.m in Sources */,
 				0A7F6F8618DC9C4500465249 /* models.xcdatamodeld in Sources */,
 				0A7F6F7B18DC9C4500465249 /* AFPropertyListRequestOperation.m in Sources */,
+				0A4525DA1A28511B00BA7499 /* Bank.m in Sources */,
 				0A7F6F8318DC9C4500465249 /* ImageCache.m in Sources */,
 				0A7F6F8218DC9C4500465249 /* HttpManager.m in Sources */,
+				0A4525DD1A28549D00BA7499 /* User.m in Sources */,
 				0A7F6F8018DC9C4500465249 /* NSManagedObject+Explain.m in Sources */,
-				0A7F6F8718DC9C4500465249 /* User.m in Sources */,
+				0A4525D71A28106700BA7499 /* NSManagedObjectContext+NLCoreData.m in Sources */,
 				0A7F6F2418DC9BF700465249 /* AppDelegate.m in Sources */,
+				0A4525D21A28106700BA7499 /* NLCoreData.m in Sources */,
 				0A7F6F7C18DC9C4500465249 /* AFURLConnectionOperation.m in Sources */,
 				0A7F6F7D18DC9C4500465249 /* AFXMLRequestOperation.m in Sources */,
-				0A7F6F8118DC9C4500465249 /* NSManagedObject+Magic.m in Sources */,
 				0A7F6F7918DC9C4500465249 /* AFJSONRequestOperation.m in Sources */,
 				0A7F6F7A18DC9C4500465249 /* AFNetworkActivityIndicatorManager.m in Sources */,
 				0A7F6F7718DC9C4500465249 /* AFHTTPRequestOperation.m in Sources */,
-				0A7F6F7F18DC9C4500465249 /* CoreDataUtil.m in Sources */,
 				0A7F6F2018DC9BF700465249 /* main.m in Sources */,
+				0A4525D41A28106700BA7499 /* NSFetchedResultsController+NLCoreData.m in Sources */,
 				0A7F6F7E18DC9C4500465249 /* Reachability.m in Sources */,
+				0A4525D61A28106700BA7499 /* NSManagedObject+NLCoreData.m in Sources */,
 				0A7F6F7618DC9C4500465249 /* AFHTTPClient.m in Sources */,
-				0A7F6F8418DC9C4500465249 /* Bank.m in Sources */,
+				0A4525D51A28106700BA7499 /* NSFetchRequest+NLCoreData.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

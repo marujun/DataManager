@@ -13,7 +13,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     
-    [CoreDataUtil launch];
+//    [CoreDataUtil launch];
     
     return YES;
 }

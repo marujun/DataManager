@@ -1,9 +1,9 @@
 //
 //  User.m
-//  CoreDataUtil
+//  DataManager_iOS5
 //
-//  Created by marujun on 14-1-16.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by marujun on 14/11/28.
+//  Copyright (c) 2014年 marujun. All rights reserved.
 //
 
 #import "User.h"
@@ -12,9 +12,10 @@
 
 @implementation User
 
-@dynamic name;
 @dynamic age;
 @dynamic gender;
+@dynamic name;
+@dynamic company;
 @dynamic bank;
 
 @end

@@ -7,482 +7,273 @@
 //
 
 #import "NSManagedObject+Explain.h"
-#import "CoreDataUtil.h"
+#import "NLCoreData.h"
 
-#define SuppressPerformSelectorLeakWarning(Stuff) \
-do { \
-_Pragma("clang diagnostic push") \
-_Pragma("clang diagnostic ignored \"-Warc-performSelector-leaks\"") \
-Stuff; \
-_Pragma("clang diagnostic pop") \
-} while (0)
-
-static dispatch_queue_t myCustomQueue;
-
-extern NSManagedObjectContext *globalManagedObjectContext_util;
-extern NSManagedObjectModel *globalManagedObjectModel_util;
 
 @implementation NSManagedObject (Explain)
 
 //通过dictionary生成一个临时的object对象但不保存到数据库中
-+ (id)objectWithDictionary:(NSDictionary *)dictionary
++ (instancetype)objectWithDictionary:(NSDictionary *)dictionary
 {
-    __block NSManagedObject *oneObject = nil;
-    [NSManagedObject asyncQueue:false actions:^{
-        NSEntityDescription *entity = [[globalManagedObjectModel_util entitiesByName] objectForKey:NSStringFromClass([self class])];
-        oneObject = [[[self class] alloc] initWithEntity:entity insertIntoManagedObjectContext:nil];
-        [oneObject setContentDictionary:dictionary?dictionary:@{}];
-    }];
-    return oneObject;
+    //    NSManagedObjectContext *tempContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    //    [tempContext setParentContext:[NSManagedObjectContext backgroundContext]];
+    //    NSManagedObject *object = [self insertInContext:tempContext];
+    NSEntityDescription *entity = [NSEntityDescription entityForName:[self entityName] inManagedObjectContext:[NSManagedObjectContext backgroundContext]];
+    NSManagedObject *object = [[self alloc] initWithEntity:entity insertIntoManagedObjectContext:nil];
+    
+    [object populateWithDictionary:dictionary];
+    
+    return object;
 }
-- (id)save
+
+- (void)synchronize
 {
-    [NSManagedObject asyncQueue:false actions:^{
-        if (!self.managedObjectContext) {
-            [globalManagedObjectContext_util insertObject:self];
-        }
-        [NSManagedObject save:nil];
-    }];
-    return self;
+    [self syncWithComplete:nil];
 }
-- (void)remove
+
+- (void)synchronizeAndWait
 {
-    if (self.managedObjectContext) {
-        [NSManagedObject deleteObjects_sync:@[self]];
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    [context performBlockAndWait:^{
+        [context saveNested];
+    }];
+}
+
+- (void)syncWithComplete:(NLCoreDataSaveCompleteBlock)block
+{
+    [self relateContext];
+    [[self class] syncContextWithComplete:block];
+}
+
++ (void)syncContext
+{
+    [self syncContextWithComplete:nil];
+}
+
++ (void)syncContextWithComplete:(NLCoreDataSaveCompleteBlock)block
+{
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    [context performBlock:^{
+        BOOL success = [context saveNested];
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            block ? block(success) : nil;
+        });
+    }];
+}
+
+- (void)relateContext
+{
+    if (!self.managedObjectContext) {
+        /*必须放到storeContext中，在子线程中会报错：
+         Child context objects become empty after merge to parent/main context*/
+        [[NSManagedObjectContext storeContext] insertObject:self];
     }
 }
+
++ (instancetype)newRelated:(NSManagedObject *)obj
+{
+    return [self insertInContext:obj.managedObjectContext];;
+}
+
+- (void)remove
+{
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    //    [context performBlockAndWait:^{
+    //        [[[self class] fetchWithObjectID:self.objectID context:context] delete];
+    //        [context saveNested];
+    //    }];
+    
+    [[[self class] fetchWithObjectID:self.objectID context:context] delete];
+    [context saveNested];
+}
+
 - (NSDictionary *)dictionary
 {
     NSArray *keys = [[[self entity] attributesByName] allKeys];
     return [[self dictionaryWithValuesForKeys:keys] mutableCopy];
 }
 
-- (id)relateContext
+- (instancetype)objectOnBgContext
 {
-    [NSManagedObject asyncQueue:false actions:^{
-        if (!self.managedObjectContext) {
-            [globalManagedObjectContext_util insertObject:self];
-        }
-    }];
-    return self;
-}
-+ (void)syncContext
-{
-    [NSManagedObject asyncQueue:true actions:^{
-        [NSManagedObject save:nil];
-    }];
-}
-
-//异步执行任务
-+ (void)addObject_async:(NSDictionary *)dictionary  toTable:(NSString *)tableName complete:(void (^)(NSManagedObject *object))complete
-{
-    [self asyncQueue:true actions:^{
-        __block NSManagedObject *oneObject = [self addObject:dictionary toTable:tableName];
-        [self save:^(NSError *error) { error?oneObject=nil:nil; }];
-        [self setResult:oneObject complete:complete];
-    }];
-}
-+ (void)addObjectsFromArray_async:(NSArray *)otherArray  toTable:(NSString *)tableName complete:(void (^)(NSArray *resultArray))complete
-{
-    [self asyncQueue:true actions:^{
-        __block NSArray *resultArray = [self addObjectsFromArray:otherArray toTable:tableName];
-        [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
-        [self setResult:resultArray complete:complete];
-    }];
-}
-+ (void)deleteObjects_async:(NSArray *)manyObject complete:(void (^)(BOOL success))complete
-{
-    [self asyncQueue:true actions:^{
-        [self deleteObjects:manyObject];
-        __block BOOL success = true;
-        [self save:^(NSError *error) { error?success=false:true; }];
-        dispatch_async(dispatch_get_main_queue(), ^{ complete ? complete(success) : nil; });
-    }];
-}
-+ (void)updateTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params complete:(void (^)(NSArray *resultArray))complete
-{
-    [self asyncQueue:true actions:^{
-        __block NSArray *resultArray = [self updateTable:tableName predicate:predicate params:params];
-        [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
-        [self setResult:resultArray complete:complete];
-    }];
-}
-+ (void)updateObject_async:(NSManagedObject *)object params:(NSDictionary *)params complete:(void (^)(NSManagedObject *object))complete
-{
-    [self asyncQueue:true actions:^{
-        __block NSManagedObject *oneObject = [self updateObject:object params:params];
-        [self save:^(NSError *error) { error?oneObject=nil:nil; }];
-        [self setResult:oneObject complete:complete];
-    }];
-}
-+ (void)countTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSNumber *count))complete
-{
-    [self asyncQueue:true actions:^{
-        NSNumber *count = @([self countTable:tableName predicate:predicate]);
-        [self setResult:count complete:complete];
-    }];
-}
-+ (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate complete:(void (^)(NSArray *result))complete
-{
-    [self getTable_async:tableName predicate:predicate sortDescriptors:nil complete:complete];
-}
-+ (void)getTable_async:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions complete:(void (^)(NSArray *result))complete
-{
-    [self asyncQueue:true actions:^{
-        NSArray *resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil actions:actions];
-        [self setResult:resultArr complete:complete];
-    }];
-}
-+ (void)getTable_async:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *result))complete
-{
-    [self asyncQueue:true actions:^{
-        NSArray *resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors actions:nil];
-        [self setResult:resultArr complete:complete];
-    }];
-}
-
-+ (void)setResult:(id)result complete:(void (^)(id obj))complete
-{
-    if (complete) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            complete(result);
-        });
+    if (!self.managedObjectContext) {
+        return self;
     }
+    return [[self class] fetchWithObjectID:self.objectID context:[NSManagedObjectContext backgroundContext]];
 }
 
-//同步执行任务
-+ (id)addObject_sync:(NSDictionary *)dictionary  toTable:(NSString *)tableName
+- (instancetype)objectOnMainContext
 {
-    __block NSManagedObject *oneObject = nil;
-    [self asyncQueue:false actions:^{
-        oneObject = [self addObject:dictionary toTable:tableName];
-        [self save:^(NSError *error) { error?oneObject=nil:nil; }];
-    }];
-    return oneObject;
-}
-+ (NSArray *)addObjectsFromArray_sync:(NSArray *)otherArray  toTable:(NSString *)tableName
-{
-    __block NSArray *resultArr = nil;
-    [self asyncQueue:false actions:^{
-        resultArr = [self addObjectsFromArray:otherArray toTable:tableName];
-        [self save:^(NSError *error) { error?resultArr=@[]:nil; }];
-    }];
-    return resultArr;
-}
-+ (BOOL)deleteObjects_sync:(NSArray *)manyObject
-{
-    __block BOOL success = true;
-    [self asyncQueue:false actions:^{
-        [self deleteObjects:manyObject];
-        [self save:^(NSError *error) { error?success=false:true; }];
-    }];
-    return success;
-}
-+ (NSArray *)updateTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params
-{
-    __block NSArray *resultArray = nil;
-    [self asyncQueue:false actions:^{
-        resultArray = [self updateTable:tableName predicate:predicate params:params];
-        [self save:^(NSError *error) { error?resultArray=@[]:nil; }];
-    }];
-    return resultArray;
-}
-+ (id)updateObject_sync:(NSManagedObject *)object params:(NSDictionary *)params
-{
-    __block NSManagedObject *oneObject = nil;
-    [self asyncQueue:false actions:^{
-        oneObject = [self updateObject:object params:params];
-        [self save:^(NSError *error) { error?oneObject=nil:nil; }];
-    }];
-    return oneObject;
-}
-+ (NSUInteger)countTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate
-{
-    __block NSUInteger count = 0;
-    [self asyncQueue:false actions:^{
-        count = [self countTable:tableName predicate:predicate];
-    }];
-    return count;
-}
-+ (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate
-{
-    return [self getTable_sync:tableName predicate:predicate sortDescriptors:nil];
-}
-+ (NSArray *)getTable_sync:(NSString *)tableName actions:(void (^)(NSFetchRequest *request))actions
-{
-    __block NSArray *resultArr = nil;
-    [self asyncQueue:false actions:^{
-        resultArr = [self getTable:tableName predicate:nil sortDescriptors:nil actions:actions];
-    }];
-    return resultArr;
-}
-+ (NSArray *)getTable_sync:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors
-{
-    __block NSArray *resultArr = nil;
-    [self asyncQueue:false actions:^{
-        resultArr = [self getTable:tableName predicate:predicate sortDescriptors:sortDescriptors actions:nil];
-    }];
-    return resultArr;
+    if (!self.managedObjectContext) {
+        return self;
+    }
+    return [[self class] fetchWithObjectID:self.objectID context:[NSManagedObjectContext mainContext]];
 }
 
-//扩展方法
-+ (NSString *)upHeadString:(NSString *)string
+/***异步执行任务****/
++ (void)insertObjectsAsync:(NSArray *)array complete:(void (^)(NSArray *objects))complete
 {
-    return [[[string substringToIndex:1] uppercaseString] stringByAppendingString:[string substringFromIndex:1]];
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    [context performBlock:^{
+        NSMutableArray *objects = [NSMutableArray array];
+        NSManagedObject *object = nil;
+        for (NSDictionary *item in array) {
+            object = [self insertInContext:context];
+            [object populateWithDictionary:item];
+            [objects addObject:object];
+        }
+        [context saveNestedAsynchronousWithCallback:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                complete?complete(objects):nil;
+            });
+        }];
+    }];
 }
-- (void)setContentDictionary:(NSDictionary *)dictionary
+
++ (void)deleteObjectsAsync:(NSArray *)manyObject complete:(void (^)(BOOL success))complete
 {
-    for (NSString *key in [dictionary allKeys])
-    {
-        id value = [dictionary objectForKey:key];
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    [context performBlock:^{
+        for (NSManagedObject *object in manyObject){
+            [[self fetchWithObjectID:object.objectID context:context] delete];
+        }
+        [context saveNestedAsynchronousWithCallback:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                complete?complete(success):nil;
+            });
+        }];
+    }];
+}
+
++ (void)fetchAsyncWithPredicate:(id)predicateOrString complete:(void (^)(NSArray *objects))complete
+{
+    [self fetchAsyncWithPredicate:predicateOrString sortDescriptors:nil complete:complete];
+}
+
++ (void)fetchAsyncWithPredicate:(id)predicateOrString sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *objects))complete
+{
+    [self fetchAsyncToMainContextWithRequest:^(NSFetchRequest *request) {
+        NSPredicate *predicate = predicateOrString;
+        if ([predicateOrString isKindOfClass:[NSString class]]) {
+            predicate = [NSPredicate predicateWithFormat:predicateOrString];
+        }
+        [request setPredicate:predicate];
+        [request setSortDescriptors:sortDescriptors];
         
-        if ([value isKindOfClass:[NSString class]] || [value isKindOfClass:[NSNumber class]] || [value isKindOfClass:[NSDate class]]){
-            @try {
-                [self setValue:value forKey:key];
-            }
-            @catch (NSException *exception) {
-                NSLog(@"解析基本类型出错了-->%@",exception);
-            }
-            
-        }else if ([value isKindOfClass:[NSDictionary class]]){
-            @try {
-                NSEntityDescription *entityDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext_util];
-                NSRelationshipDescription *relationshipDescrip = [entityDescirp.relationshipsByName objectForKey:key];
-                NSString *tableName = relationshipDescrip.destinationEntity.name;
-                
-                NSManagedObject *object = [NSManagedObject addObject:value toTable:tableName];
-                
-                [self setValue:object forKey:key];
-            }
-            @catch (NSException *exception) {
-                NSLog(@"解析字典出错了-->%@",exception);
-            }
-        }else if ([value isKindOfClass:[NSArray class]]){
-            
-            @try {
-                for (NSDictionary *oneJsonObject in value)
-                {
-                    NSEntityDescription *entiDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class]) inManagedObjectContext:globalManagedObjectContext_util];
-                    NSRelationshipDescription *relationshipDescrip = [entiDescirp.relationshipsByName objectForKey:key];
-                    NSString *tableName = relationshipDescrip.destinationEntity.name;
-                    
-                    NSManagedObject *object = [NSManagedObject addObject:oneJsonObject toTable:tableName];
-                    SEL addSelector = NSSelectorFromString([NSString stringWithFormat:@"add%@Object:",[NSManagedObject upHeadString:key]]);
-                    SuppressPerformSelectorLeakWarning([self performSelector:addSelector withObject:object]);
-                }
-            }
-            @catch (NSException *exception) {
-                NSLog(@"解析数组出错了-->%@",exception);
-            }
-        }
-    }
+    } completion:^(NSArray *objects) {
+        complete?complete(objects):nil;
+    }];
 }
 
-//在当前队列执行任务
-+ (id)addObject:(NSDictionary *)dictionary toTable:(NSString *)tableName
+/***同步执行任务****/
+//在主线程中操作
++ (NSArray *)fetchAllObjects
 {
-    NSManagedObject *oneObject = nil;
-    Class class = NSClassFromString(tableName);
-    
-    NSEntityDescription *entityDescrip = [[globalManagedObjectModel_util entitiesByName] objectForKey:tableName];
-    oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext_util];
-    [oneObject setContentDictionary:dictionary];
-    
-    return oneObject;
+    return [self fetchOnMainWithPredicate:nil];
 }
 
-
-+ (NSArray *)addObjectsFromArray:(NSArray *)otherArray toTable:(NSString *)tableName
++ (NSArray *)fetchOnMainWithPredicate:(id)predicateOrString, ...
 {
-    NSMutableArray *resultArray = [[NSMutableArray alloc] init];
-    
-    Class class = NSClassFromString(tableName);
-    NSEntityDescription *entityDescrip = [[globalManagedObjectModel_util entitiesByName] objectForKey:tableName];
-    
-    for (NSDictionary *dictionary in otherArray)
-    {
-        NSManagedObject *oneObject = [[class alloc] initWithEntity:entityDescrip insertIntoManagedObjectContext:globalManagedObjectContext_util];
-        [oneObject setContentDictionary:dictionary];
-        [resultArray addObject:oneObject];
-    }
-    return [resultArray copy];
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchInContext:[NSManagedObjectContext mainContext] predicate:predicate];
 }
 
-+ (NSArray *)updateTable:(NSString *)tableName predicate:(NSPredicate *)predicate params:(NSDictionary *)params
++ (NSArray *)fetchOnMainWithRequest:(void (^)(NSFetchRequest* request))block
 {
-    //查询数据
-    NSArray *queryArr = [self getTable:tableName predicate:predicate sortDescriptors:nil actions:nil];
-    
-    //有匹配的记录时则更新记录
-    if(queryArr && queryArr.count){
-        for (NSManagedObject *object in queryArr.copy)
-        {
-            [self updateObject:object params:params];
-        }
-    } else //没有匹配的记录时添加记录
-    {
-        queryArr = @[[self addObject:params toTable:tableName]];
-    }
-    return queryArr;
+    return [self fetchWithRequest:block context:[NSManagedObjectContext mainContext]];
 }
 
-+ (id)updateObject:(NSManagedObject *)object params:(NSDictionary *)params
++ (NSUInteger)countOnMainWithPredicate:(id)predicateOrString, ...
 {
-    for (NSString *key in params.allKeys)
-    {
-        id value = [params objectForKey:key];
-        
-        if ([value isKindOfClass:[NSString class]] || [value isKindOfClass:[NSNumber class]] || [value isKindOfClass:[NSDate class]]){
-            @try {
-                [object setValue:value forKey:key];
-            }
-            @catch (NSException *exception) {
-                NSLog(@"key值出错了-->%@",exception);
-            }
-        }else if ([value isKindOfClass:[NSDictionary class]]){
-            @try {
-                NSManagedObject *otherObject = [object valueForKey:key];
-                if(otherObject){
-                    [self updateObject:otherObject params:value];
-                }else{
-                    NSEntityDescription *entityDescirp = [NSEntityDescription entityForName:NSStringFromClass([self class])
-                                                                     inManagedObjectContext:globalManagedObjectContext_util];
-                    NSRelationshipDescription *relationshipDescrip = [entityDescirp.relationshipsByName objectForKey:key];
-                    NSString *tableName = relationshipDescrip.destinationEntity.name;
-                    
-                    otherObject = [NSManagedObject addObject:value toTable:tableName];
-                    [object setValue:otherObject forKey:key];
-                }
-            }
-            @catch (NSException *exception) {
-                NSLog(@"解析字典出错了-->%@",exception);
-            }
-        }else if ([value isKindOfClass:[NSArray class]]){
-            @try {
-                NSArray *objectArray = [[object valueForKey:key] allObjects];
-                
-                for (int index=0; index<[(NSArray *)value count]; index++)
-                {
-                    NSDictionary *tempParams = [(NSArray *)value objectAtIndex:index];
-                    if (objectArray && index<objectArray.count) {
-                        [self updateObject:objectArray[index] params:tempParams];
-                    }else{
-                        NSEntityDescription *entiDescirp = [NSEntityDescription entityForName:NSStringFromClass([object class])
-                                                                       inManagedObjectContext:globalManagedObjectContext_util];
-                        NSRelationshipDescription *relationshipDescrip = [entiDescirp.relationshipsByName objectForKey:key];
-                        NSString *tableName = relationshipDescrip.destinationEntity.name;
-                        
-                        NSManagedObject *tempObject = [self addObject:tempParams toTable:tableName];
-                        SEL addSelector = NSSelectorFromString([NSString stringWithFormat:@"add%@Object:",[NSManagedObject upHeadString:key]]);
-                        SuppressPerformSelectorLeakWarning([object performSelector:addSelector withObject:tempObject]);
-                    }
-                }
-            }
-            @catch (NSException *exception) {
-                NSLog(@"解析数组出错了-->%@",exception);
-            }
-        }
-    }
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self countInContext:[NSManagedObjectContext mainContext] predicate:predicate];
+}
+
+//在子线程中操作
++ (instancetype)insertObjectWithDictionary:(NSDictionary *)dictionary
+{
+    __block NSManagedObject *object = nil;
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    //    [context performBlockAndWait:^{
+    //        object = [self insertInContext:context];
+    //        [object populateWithDictionary:dictionary];
+    //        [context saveNested];
+    //    }];
+    
+    object = [self insertInContext:context];
+    [object populateWithDictionary:dictionary];
+    [context saveNested];
+    
     return object;
 }
 
-+ (NSArray *)getTable:(NSString *)tableName predicate:(NSPredicate *)predicate sortDescriptors:(NSArray *)sortDescriptors actions:(void (^)(NSFetchRequest *request))actions
++ (NSMutableArray *)insertObjectsWithArray:(NSArray *)array
 {
-    NSArray *resultArr = @[];
+    __block NSManagedObject *object = nil;
+    NSMutableArray *objects = [NSMutableArray array];
     
-    NSFetchRequest *request = [[NSFetchRequest alloc]init];
-    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
-    [request setEntity:description];
-    if (predicate) {
-        [request setPredicate:predicate];
-    }
-    if (sortDescriptors && sortDescriptors.count) {
-        [request setSortDescriptors:sortDescriptors];
-    }
-    actions?actions(request):nil;
-    @try {
-        @synchronized(globalManagedObjectContext_util) {
-            resultArr = [globalManagedObjectContext_util executeFetchRequest:request error:nil];
-        }
-    }
-    @catch (NSException *exception) {
-        NSLog(@"查询数据库出错了-->%@",exception);
-    }
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    //    [context performBlockAndWait:^{
+    //
+    //    }];
     
-    return resultArr;
-}
-
-
-+ (NSUInteger)countTable:(NSString *)tableName predicate:(NSPredicate *)predicate
-{
-    NSFetchRequest *request = [[NSFetchRequest alloc]init];
-    NSEntityDescription *description = [NSEntityDescription entityForName:tableName inManagedObjectContext:globalManagedObjectContext_util];
-    [request setEntity:description];
-    if (predicate) {
-        [request setPredicate:predicate];
+    for (NSDictionary *item in array) {
+        object = [self insertInContext:context];
+        [object populateWithDictionary:item];
+        [objects addObject:object];
     }
+    [context saveNested];
     
-    NSUInteger count = [globalManagedObjectContext_util countForFetchRequest:request error:nil];
-    if(count == NSNotFound) {
-        return 0;
-    }
-    return count;
-}
-
-
-
-+ (void)save:(void (^)(NSError *error))complete
-{
-    NSError *error;
-    @synchronized(globalManagedObjectContext_util) {
-        
-        //防止频繁进行数据库同步
-        [NSObject cancelPreviousPerformRequestsWithTarget:globalManagedObjectContext_util selector:@selector(save:) object:nil];
-        [globalManagedObjectContext_util performSelector:@selector(save:) withObject:nil afterDelay:0.1];
-        
-//        if (![globalManagedObjectContext_util save:&error]) {
-//            // Update to handle the error appropriately.
-//            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-//        }
-        complete ? complete(error) : nil;
-    }
+    return objects;
 }
 
 + (void)deleteObjects:(NSArray *)manyObject
 {
-    @synchronized(globalManagedObjectContext_util) {
-        for (NSManagedObject *object in manyObject){
-            [globalManagedObjectContext_util deleteObject:object];
-        }
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    //    [context performBlockAndWait:^{
+    //        for (NSManagedObject *object in manyObject){
+    //            [[self fetchWithObjectID:object.objectID context:context] delete];
+    //        }
+    //        [context saveNested];
+    //    }];
+    
+    for (NSManagedObject *object in manyObject){
+        [[self fetchWithObjectID:object.objectID context:context] delete];
     }
+    [context saveNested];
 }
 
-//是否在异步队列中操作数据库
-+ (void)asyncQueue:(BOOL)async actions:(void (^)(void))actions
++ (void)emptyTable
 {
-    static int specificKey;
-    if (myCustomQueue == NULL)
-    {
-        myCustomQueue = dispatch_queue_create("com.jizhi.coredata", DISPATCH_QUEUE_SERIAL); //生成一个串行队列
-        
-        CFStringRef specificValue = CFSTR("com.jizhi.coredata");
-        dispatch_queue_set_specific(myCustomQueue, &specificKey, (void*)specificValue,(dispatch_function_t)CFRelease);
-    }
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    //    [context performBlockAndWait:^{
+    //
+    //    }];
     
-    NSString *retrievedValue = (NSString *)CFBridgingRelease(dispatch_get_specific(&specificKey));
-    if (retrievedValue && [retrievedValue isEqualToString:@"com.jizhi.coredata"]) {
-        actions ? actions() : nil;
-    }else{
-        if(async){
-            dispatch_async(myCustomQueue, ^{
-                actions ? actions() : nil;
-            });
-        }else{
-            dispatch_sync(myCustomQueue, ^{
-                actions ? actions() : nil;
-            });
-        }
+    NSArray *objects = [self fetchInContext:context predicate:nil];
+    for (NSManagedObject *object in objects){
+        [object delete];
     }
+    [context saveNested];
 }
+
++ (NSUInteger)countOnBgWithPredicate:(id)predicateOrString, ...
+{
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self countInContext:[NSManagedObjectContext backgroundContext] predicate:predicate];
+}
+
++ (NSArray *)fetchOnBgWithPredicate:(id)predicateOrString, ...
+{
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchInContext:[NSManagedObjectContext backgroundContext] predicate:predicate];
+}
+
++ (NSArray *)fetchOnBgWithRequest:(void (^)(NSFetchRequest* request))block
+{
+    return [self fetchWithRequest:block context:[NSManagedObjectContext backgroundContext]];
+}
+
+
 
 @end

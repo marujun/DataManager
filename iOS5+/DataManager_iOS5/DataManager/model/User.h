@@ -1,9 +1,9 @@
 //
 //  User.h
-//  CoreDataUtil
+//  DataManager_iOS5
 //
-//  Created by marujun on 14-1-16.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by marujun on 14/11/28.
+//  Copyright (c) 2014年 marujun. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
@@ -14,9 +14,10 @@
 
 @interface User : BaseObject
 
-@property (nonatomic, retain) NSString * name;
 @property (nonatomic, retain) NSNumber * age;
 @property (nonatomic, retain) NSNumber * gender;
+@property (nonatomic, retain) NSString * name;
+@property (nonatomic, retain) NSString * company;
 @property (nonatomic, retain) NSSet *bank;
 @end
 

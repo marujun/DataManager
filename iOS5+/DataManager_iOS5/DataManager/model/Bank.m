@@ -1,16 +1,18 @@
 //
 //  Bank.m
-//  CoreDataUtil
+//  DataManager_iOS5
 //
-//  Created by marujun on 14-1-16.
-//  Copyright (c) 2014年 马汝军. All rights reserved.
+//  Created by marujun on 14/11/28.
+//  Copyright (c) 2014年 marujun. All rights reserved.
 //
 
 #import "Bank.h"
+#import "User.h"
 
 
 @implementation Bank
 
 @dynamic account;
+@dynamic user;
 
 @end
