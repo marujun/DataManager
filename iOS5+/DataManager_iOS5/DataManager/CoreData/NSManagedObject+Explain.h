@@ -13,18 +13,20 @@
 @interface NSManagedObject (Explain)
 
 
-- (void)remove;
 - (NSDictionary *)dictionary;
 
-- (void)synchronize;
-- (void)synchronizeAndWait;
-- (void)syncWithComplete:(NLCoreDataSaveCompleteBlock)block;
+- (void)saveAndWait;
+- (void)removeAndWait;
+- (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block;
 
-+ (void)syncContext;
-+ (void)syncContextWithComplete:(NLCoreDataSaveCompleteBlock)block;
 - (void)relateContext;
 - (instancetype)objectOnBgContext;
 - (instancetype)objectOnMainContext;
+
++ (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block;
+
+//在bg线程操作数据，主线程执行完成
++ (void)performBlock:(void (^)())block complete:(void (^)())complete;
 
 //创建一个新的对象和obj对象在同一个Context中
 + (instancetype)newRelated:(NSManagedObject *)obj;

@@ -15,10 +15,7 @@
 //通过dictionary生成一个临时的object对象但不保存到数据库中
 + (instancetype)objectWithDictionary:(NSDictionary *)dictionary
 {
-    //    NSManagedObjectContext *tempContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-    //    [tempContext setParentContext:[NSManagedObjectContext backgroundContext]];
-    //    NSManagedObject *object = [self insertInContext:tempContext];
-    NSEntityDescription *entity = [NSEntityDescription entityForName:[self entityName] inManagedObjectContext:[NSManagedObjectContext backgroundContext]];
+    NSEntityDescription *entity = [NSEntityDescription entityForName:[self entityName] inManagedObjectContext:[NSManagedObjectContext storeContext]];
     NSManagedObject *object = [[self alloc] initWithEntity:entity insertIntoManagedObjectContext:nil];
     
     [object populateWithDictionary:dictionary];
@@ -26,40 +23,30 @@
     return object;
 }
 
-- (void)synchronize
+- (NSDictionary *)dictionary
 {
-    [self syncWithComplete:nil];
+    NSArray *keys = [[[self entity] attributesByName] allKeys];
+    return [[self dictionaryWithValuesForKeys:keys] mutableCopy];
 }
 
-- (void)synchronizeAndWait
-{
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    [context performBlockAndWait:^{
-        [context saveNested];
-    }];
-}
-
-- (void)syncWithComplete:(NLCoreDataSaveCompleteBlock)block
+- (void)saveAndWait
 {
     [self relateContext];
-    [[self class] syncContextWithComplete:block];
+    [[NSManagedObjectContext backgroundContext] saveNested];
 }
 
-+ (void)syncContext
-{
-    [self syncContextWithComplete:nil];
-}
-
-+ (void)syncContextWithComplete:(NLCoreDataSaveCompleteBlock)block
+- (void)removeAndWait
 {
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    [context performBlock:^{
-        BOOL success = [context saveNested];
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            block ? block(success) : nil;
-        });
-    }];
+    
+    [[[self class] fetchWithObjectID:self.objectID context:context] delete];
+    [context saveNested];
+}
+
+- (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block
+{
+    [self relateContext];
+    [[self class] saveWithComplete:block];
 }
 
 - (void)relateContext
@@ -69,29 +56,6 @@
          Child context objects become empty after merge to parent/main context*/
         [[NSManagedObjectContext storeContext] insertObject:self];
     }
-}
-
-+ (instancetype)newRelated:(NSManagedObject *)obj
-{
-    return [self insertInContext:obj.managedObjectContext];;
-}
-
-- (void)remove
-{
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    //    [context performBlockAndWait:^{
-    //        [[[self class] fetchWithObjectID:self.objectID context:context] delete];
-    //        [context saveNested];
-    //    }];
-    
-    [[[self class] fetchWithObjectID:self.objectID context:context] delete];
-    [context saveNested];
-}
-
-- (NSDictionary *)dictionary
-{
-    NSArray *keys = [[[self entity] attributesByName] allKeys];
-    return [[self dictionaryWithValuesForKeys:keys] mutableCopy];
 }
 
 - (instancetype)objectOnBgContext
@@ -108,6 +72,42 @@
         return self;
     }
     return [[self class] fetchWithObjectID:self.objectID context:[NSManagedObjectContext mainContext]];
+}
+
+
++ (instancetype)newRelated:(NSManagedObject *)obj
+{
+    return [self insertInContext:obj.managedObjectContext];;
+}
+
++ (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block
+{
+    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    [context performBlock:^{
+        [context saveNestedAsynchronousWithCallback:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                block ? block(success) : nil;
+            });
+        }];
+    }];
+}
+
+
+//在bg线程操作数据，主线程执行完成
++ (void)performBlock:(void (^)())block complete:(void (^)())complete
+{
+    NSManagedObjectContext* mainContext	= [NSManagedObjectContext mainContext];
+    NSManagedObjectContext* bgContext	= [NSManagedObjectContext backgroundContext];
+    [bgContext performBlock:^{
+        block?block():nil;
+        
+        [bgContext saveNested];
+        
+        [mainContext performBlock:^{
+            
+            complete?complete():nil;
+        }];
+    }];
 }
 
 /***异步执行任务****/
@@ -192,15 +192,9 @@
 //在子线程中操作
 + (instancetype)insertObjectWithDictionary:(NSDictionary *)dictionary
 {
-    __block NSManagedObject *object = nil;
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    //    [context performBlockAndWait:^{
-    //        object = [self insertInContext:context];
-    //        [object populateWithDictionary:dictionary];
-    //        [context saveNested];
-    //    }];
     
-    object = [self insertInContext:context];
+    NSManagedObject *object = [self insertInContext:context];
     [object populateWithDictionary:dictionary];
     [context saveNested];
     
@@ -209,13 +203,10 @@
 
 + (NSMutableArray *)insertObjectsWithArray:(NSArray *)array
 {
-    __block NSManagedObject *object = nil;
+    NSManagedObject *object = nil;
     NSMutableArray *objects = [NSMutableArray array];
     
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    //    [context performBlockAndWait:^{
-    //
-    //    }];
     
     for (NSDictionary *item in array) {
         object = [self insertInContext:context];
@@ -230,13 +221,6 @@
 + (void)deleteObjects:(NSArray *)manyObject
 {
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    //    [context performBlockAndWait:^{
-    //        for (NSManagedObject *object in manyObject){
-    //            [[self fetchWithObjectID:object.objectID context:context] delete];
-    //        }
-    //        [context saveNested];
-    //    }];
-    
     for (NSManagedObject *object in manyObject){
         [[self fetchWithObjectID:object.objectID context:context] delete];
     }
@@ -246,9 +230,6 @@
 + (void)emptyTable
 {
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    //    [context performBlockAndWait:^{
-    //
-    //    }];
     
     NSArray *objects = [self fetchInContext:context predicate:nil];
     for (NSManagedObject *object in objects){
