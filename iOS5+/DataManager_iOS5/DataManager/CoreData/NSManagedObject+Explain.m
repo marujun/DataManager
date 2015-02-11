@@ -101,11 +101,11 @@
     [bgContext performBlock:^{
         block?block():nil;
         
-        [bgContext saveNested];
-        
-        [mainContext performBlock:^{
-            
-            complete?complete():nil;
+        [bgContext saveNestedAsynchronousWithCallback:^(BOOL success) {
+            [mainContext performBlock:^{
+                
+                complete?complete():nil;
+            }];
         }];
     }];
 }
