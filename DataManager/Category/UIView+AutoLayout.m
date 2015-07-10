@@ -1376,8 +1376,9 @@ static BOOL _al_isExecutingConstraintsBlock = NO;
 {
     // go through constraints in reverse as we do not want to match auto-resizing or interface builder constraints
     // and they are likely to be added first.
-    NSEnumerator *reverseConstraints = installedView.constraints.reverseObjectEnumerator;
-    for (NSLayoutConstraint *existingConstraint in reverseConstraints) {
+    NSEnumerator *constraints = installedView.constraints.reverseObjectEnumerator;
+    for (NSLayoutConstraint *existingConstraint in constraints) {
+        if (![existingConstraint isMemberOfClass:[self class]]) continue;
         if (existingConstraint.firstItem != self.firstItem) continue;
         if (existingConstraint.secondItem != self.secondItem) continue;
         if (existingConstraint.firstAttribute != self.firstAttribute) continue;
