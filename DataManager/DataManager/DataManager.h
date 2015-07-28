@@ -7,5 +7,6 @@
 //
 
 #import "ImageCache.h"
+#import "DBObject.h"
 #import "NLCoreData.h"
 #import "HttpManager.h"

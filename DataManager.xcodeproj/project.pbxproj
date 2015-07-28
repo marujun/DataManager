@@ -52,6 +52,7 @@
 		0AEAE9C3189155E40055EADB /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE9C2189155E40055EADB /* SystemConfiguration.framework */; };
 		0AEAE9C5189155ED0055EADB /* CoreData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE9C4189155ED0055EADB /* CoreData.framework */; };
 		0AEAE9C8189170500055EADB /* default.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 0AEAE9C7189170500055EADB /* default.jpg */; };
+		0AFFCCCB1B670E6E009D47AD /* DBObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 0AFFCCCA1B670E6E009D47AD /* DBObject.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -143,6 +144,8 @@
 		0AEAE9C2189155E40055EADB /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		0AEAE9C4189155ED0055EADB /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		0AEAE9C7189170500055EADB /* default.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = default.jpg; sourceTree = "<group>"; };
+		0AFFCCC91B670E6E009D47AD /* DBObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DBObject.h; sourceTree = "<group>"; };
+		0AFFCCCA1B670E6E009D47AD /* DBObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DBObject.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,6 +179,7 @@
 		0A0543811B4F6F6700FC0086 /* DataManager */ = {
 			isa = PBXGroup;
 			children = (
+				0AFFCCC81B670E66009D47AD /* DBModel */,
 				0A0543821B4F6F6700FC0086 /* AFNetworking */,
 				0A0543961B4F6F6700FC0086 /* CoreData */,
 				0A0543A31B4F6F6700FC0086 /* DataManager.h */,
@@ -337,6 +341,15 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
+		0AFFCCC81B670E66009D47AD /* DBModel */ = {
+			isa = PBXGroup;
+			children = (
+				0AFFCCC91B670E6E009D47AD /* DBObject.h */,
+				0AFFCCCA1B670E6E009D47AD /* DBObject.m */,
+			);
+			path = DBModel;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -454,6 +467,7 @@
 				0A0543F11B4F6F6700FC0086 /* NSManagedObjectContext+NLCoreData.m in Sources */,
 				0A0544281B4F723300FC0086 /* NSString+Common.m in Sources */,
 				0A0543EE1B4F6F6700FC0086 /* NSFetchRequest+NLCoreData.m in Sources */,
+				0AFFCCCB1B670E6E009D47AD /* DBObject.m in Sources */,
 				0A05442D1B4F723300FC0086 /* UIImage+ImageEffects.m in Sources */,
 				0A0544081B4F6F6700FC0086 /* HttpManager.m in Sources */,
 				0A0543E51B4F6F6700FC0086 /* AFHTTPSessionManager.m in Sources */,
