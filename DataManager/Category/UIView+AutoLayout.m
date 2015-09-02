@@ -299,12 +299,15 @@ static BOOL _al_isExecutingConstraintsBlock = NO;
     NSAssert(superview, @"View's superview must not be nil.\nView: %@", self);
     if (edge == ALEdgeBottom || edge == ALEdgeRight || edge == ALEdgeTrailing) {
         // The bottom, right, and trailing insets (and relations, if an inequality) are inverted to become offsets
-        inset = -inset;
         if (relation == NSLayoutRelationLessThanOrEqual) {
             relation = NSLayoutRelationGreaterThanOrEqual;
         } else if (relation == NSLayoutRelationGreaterThanOrEqual) {
             relation = NSLayoutRelationLessThanOrEqual;
         }
+        BOOL superTranslates = superview.translatesAutoresizingMaskIntoConstraints;
+        NSLayoutConstraint *constraint = [superview autoPinEdge:edge toEdge:edge ofView:self withOffset:inset relation:relation];
+        superview.translatesAutoresizingMaskIntoConstraints = superTranslates;
+        return constraint;
     }
     return [self autoPinEdge:edge toEdge:edge ofView:superview withOffset:inset relation:relation];
 }
@@ -1376,8 +1379,7 @@ static BOOL _al_isExecutingConstraintsBlock = NO;
 {
     // go through constraints in reverse as we do not want to match auto-resizing or interface builder constraints
     // and they are likely to be added first.
-    NSEnumerator *constraints = installedView.constraints.reverseObjectEnumerator;
-    for (NSLayoutConstraint *existingConstraint in constraints) {
+    for (NSLayoutConstraint *existingConstraint in installedView.constraints.reverseObjectEnumerator) {
         if (![existingConstraint isMemberOfClass:[self class]]) continue;
         if (existingConstraint.firstItem != self.firstItem) continue;
         if (existingConstraint.secondItem != self.secondItem) continue;
