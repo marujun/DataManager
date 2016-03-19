@@ -26,6 +26,10 @@
 
 typedef void(^NLCoreDataSaveCompleteBlock)(BOOL success);
 
+#define _mainContext        [NSManagedObjectContext mainContext]
+#define _storeContext       [NSManagedObjectContext storeContext]
+#define _backgroundContext  [NSManagedObjectContext backgroundContext]
+
 #pragma mark -
 @interface NSManagedObjectContext (NLCoreData)
 

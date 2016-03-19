@@ -175,6 +175,13 @@ typedef void(^ALConstraintsBlock)(void);    // a block of method calls to the UI
 - (NSLayoutConstraint *)autoMatchDimension:(ALDimension)dimension toDimension:(ALDimension)toDimension ofView:(UIView *)peerView withMultiplier:(CGFloat)multiplier relation:(NSLayoutRelation)relation;
 
 
+#pragma mark Aspect Ratio
+
+/** Sets the aspect ratio of the view to a specific size.
+ NOTE: The multiplier can not be modified after constraint created!*/
+- (NSLayoutConstraint *)autoSetAspectRatioToSize:(CGFloat)size;
+
+
 #pragma mark Set Dimensions
 
 /** Sets the view to a specific size. */
@@ -190,7 +197,7 @@ typedef void(^ALConstraintsBlock)(void);    // a block of method calls to the UI
 #pragma mark Set Content Compression Resistance & Hugging
 
 /** Sets the priority of content compression resistance for an axis.
-    NOTE: This method must only be called from within the block passed into the method +[UIView autoSetPriority:forConstraints:] */
+ NOTE: This method must only be called from within the block passed into the method +[UIView autoSetPriority:forConstraints:] */
 - (void)autoSetContentCompressionResistancePriorityForAxis:(ALAxis)axis;
 
 /** Sets the priority of content hugging for an axis.

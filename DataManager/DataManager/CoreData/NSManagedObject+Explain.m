@@ -12,17 +12,6 @@
 
 @implementation NSManagedObject (Explain)
 
-//通过dictionary生成一个临时的object对象但不保存到数据库中
-+ (instancetype)objectWithDictionary:(NSDictionary *)dictionary
-{
-    NSEntityDescription *entity = [NSEntityDescription entityForName:[self entityName] inManagedObjectContext:[NSManagedObjectContext storeContext]];
-    NSManagedObject *object = [[self alloc] initWithEntity:entity insertIntoManagedObjectContext:nil];
-    
-    [object populateWithDictionary:dictionary];
-    
-    return object;
-}
-
 - (NSDictionary *)dictionary
 {
     NSArray *keys = [[[self entity] attributesByName] allKeys];
@@ -31,87 +20,81 @@
 
 - (void)saveAndWait
 {
-    [self relateContext];
-    [[NSManagedObjectContext backgroundContext] saveNested];
+    [_backgroundContext performBlockAndWait:^{
+        [_backgroundContext saveNested];
+    }];
 }
 
-- (void)removeAndWait
+- (void)deleteAndWait
 {
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
+    [_backgroundContext performBlockAndWait:^{
+        [[[self class] fetchWithObjectID:self.objectID context:_backgroundContext] delete];
+        [_backgroundContext saveNested];
+    }];
+}
+
+- (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)complete
+{
+    [[self class] saveWithComplete:complete];
+}
+
+- (instancetype)objectInBgContext
+{
+    return [self objectInContext:_backgroundContext];
+}
+
+- (instancetype)objectInMainContext
+{
+    return [self objectInContext:_mainContext];
+}
+
+- (instancetype)objectInContext:(NSManagedObjectContext *)context
+{
+    if ([[self objectID] isTemporaryID]) {
+        if (![self obtainPermanentID]) return nil;
+    }
     
-    [[[self class] fetchWithObjectID:self.objectID context:context] delete];
-    [context saveNested];
+    return [[self class] fetchWithObjectID:[self objectID] context:context];
 }
 
-- (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block
++ (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)complete
 {
-    [self relateContext];
-    [[self class] saveWithComplete:block];
+    [self performBlock:nil complete:complete];
 }
 
-- (void)relateContext
++ (void)performBlock:(void (^)(NSManagedObjectContext *context))block complete:(NLCoreDataSaveCompleteBlock)complete
 {
-    if (!self.managedObjectContext) {
-        /*必须放到storeContext中，在子线程中会报错：
-           Child context objects become empty after merge to parent/main context*/
-        [[NSManagedObjectContext storeContext] insertObject:self];
-    }
-}
-
-- (instancetype)objectOnBgContext
-{
-    if (!self.managedObjectContext) {
-        return self;
-    }
-    return [[self class] fetchWithObjectID:self.objectID context:[NSManagedObjectContext backgroundContext]];
-}
-
-- (instancetype)objectOnMainContext
-{
-    if (!self.managedObjectContext) {
-        return self;
-    }
-    return [[self class] fetchWithObjectID:self.objectID context:[NSManagedObjectContext mainContext]];
-}
-
-
-+ (instancetype)newRelated:(NSManagedObject *)obj
-{
-    return [self insertInContext:obj.managedObjectContext];;
-}
-
-+ (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block
-{
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    [context performBlock:^{
-        [context saveNestedAsynchronousWithCallback:^(BOOL success) {
+    [_backgroundContext performBlock:^{
+        if (block) block(_backgroundContext);
+        
+        [_backgroundContext saveNestedAsynchronousWithCallback:^(BOOL success) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                block ? block(success) : nil;
+                if (complete) complete(success);
+            });
+        }];
+    }];
+}
+
++ (void)saveInPrivateQueueWithBlock:(void(^)(NSManagedObjectContext *context))block complete:(NLCoreDataSaveCompleteBlock)complete
+{
+    NSManagedObjectContext *localContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    [localContext setParentContext:_mainContext];
+    [localContext setDisplay_name:NSStringFromSelector(_cmd)];
+    
+    [localContext performBlock:^{
+        if (block) block(localContext);
+        
+        [localContext saveNestedAsynchronousWithCallback:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (complete) complete(success);
             });
         }];
     }];
 }
 
 
-//在bg线程操作数据，主线程执行完成
-+ (void)performBlock:(void (^)())block complete:(void (^)())complete
-{
-    NSManagedObjectContext* mainContext	= [NSManagedObjectContext mainContext];
-    NSManagedObjectContext* bgContext	= [NSManagedObjectContext backgroundContext];
-    [bgContext performBlock:^{
-        block?block():nil;
-        
-        [bgContext saveNestedAsynchronousWithCallback:^(BOOL success) {
-            [mainContext performBlock:^{
-                
-                complete?complete():nil;
-            }];
-        }];
-    }];
-}
-
-/***异步执行任务****/
-+ (void)insertObjectsAsync:(NSArray *)array complete:(void (^)(NSArray *objects))complete
+//TODO：异步执行任务
++ (void)insertObjectsAsync:(NSArray *)array complete:(NLCoreDataFetchCompleteBlock)complete
 {
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
     [context performBlock:^{
@@ -124,33 +107,87 @@
         }
         [context saveNestedAsynchronousWithCallback:^(BOOL success) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                complete?complete(objects):nil;
+                if (complete) complete(objects);
             });
         }];
     }];
 }
 
-+ (void)deleteObjectsAsync:(NSArray *)manyObject complete:(void (^)(BOOL success))complete
++ (void)deleteObjectsAsync:(NSArray *)array complete:(NLCoreDataSaveCompleteBlock)complete
 {
     NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
     [context performBlock:^{
-        for (NSManagedObject *object in manyObject){
+        for (NSManagedObject *object in array){
             [[self fetchWithObjectID:object.objectID context:context] delete];
         }
         [context saveNestedAsynchronousWithCallback:^(BOOL success) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                complete?complete(success):nil;
+                if (complete) complete(success);
             });
         }];
     }];
 }
 
-+ (void)fetchAsyncWithPredicate:(id)predicateOrString complete:(void (^)(NSArray *objects))complete
++ (void)deleteAsyncWithPredicate:(id)predicateOrString complete:(NLCoreDataSaveCompleteBlock)complete
+{
+    NSManagedObjectContext *bgContext = [NSManagedObjectContext backgroundContext];
+    NSPredicate *predicate = predicateOrString;
+    if (predicateOrString && [predicateOrString isKindOfClass:[NSString class]]) {
+        predicate = [NSPredicate predicateWithFormat:predicateOrString];
+    }
+    
+    [bgContext performBlock:^{
+        if ([self deleteInContext:bgContext predicate:predicate]) {
+            [bgContext saveNestedAsynchronousWithCallback:^(BOOL success) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (complete) complete(success);
+                });
+            }];
+        }
+        else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (complete) complete(NO);
+            });
+        }
+    }];
+    
+}
+
++ (void)updateAsyncWithPredicate:(id)predicateOrString properties:(NSDictionary *)properties complete:(NLCoreDataSaveCompleteBlock)complete
+{
+    NSManagedObjectContext *bgContext = [NSManagedObjectContext backgroundContext];
+    NSPredicate *predicate = predicateOrString;
+    if (predicateOrString && [predicateOrString isKindOfClass:[NSString class]]) {
+        predicate = [NSPredicate predicateWithFormat:predicateOrString];
+    }
+    
+    [bgContext performBlock:^{
+        if ([self updateInContext:bgContext properties:properties predicate:predicate]) {
+            [bgContext saveNestedAsynchronousWithCallback:^(BOOL success) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (complete) complete(success);
+                });
+            }];
+        }
+        else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (complete) complete(NO);
+            });
+        }
+    }];
+}
+
++ (void)fetchAllAsyncWithComplete:(NLCoreDataFetchCompleteBlock)complete
+{
+    [self fetchAsyncWithPredicate:nil sortDescriptors:nil complete:complete];
+}
+
++ (void)fetchAsyncWithPredicate:(id)predicateOrString complete:(NLCoreDataFetchCompleteBlock)complete
 {
     [self fetchAsyncWithPredicate:predicateOrString sortDescriptors:nil complete:complete];
 }
 
-+ (void)fetchAsyncWithPredicate:(id)predicateOrString sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *objects))complete
++ (void)fetchAsyncWithPredicate:(id)predicateOrString sortDescriptors:(NSArray *)sortDescriptors complete:(NLCoreDataFetchCompleteBlock)complete
 {
     [self fetchAsyncToMainContextWithRequest:^(NSFetchRequest *request) {
         NSPredicate *predicate = predicateOrString;
@@ -161,100 +198,73 @@
         [request setSortDescriptors:sortDescriptors];
         
     } completion:^(NSArray *objects) {
-        complete?complete(objects):nil;
+        if (complete) complete(objects);
     }];
 }
 
-/***同步执行任务****/
-//在主线程中操作
-+ (NSArray *)fetchAllObjects
-{
-    return [self fetchOnMainWithPredicate:nil];
-}
 
-+ (NSArray *)fetchOnMainWithPredicate:(id)predicateOrString, ...
-{
-    SET_PREDICATE_WITH_VARIADIC_ARGS
-    return [self fetchInContext:[NSManagedObjectContext mainContext] predicate:predicate];
-}
 
-+ (NSArray *)fetchOnMainWithRequest:(void (^)(NSFetchRequest* request))block
-{
-    return [self fetchWithRequest:block context:[NSManagedObjectContext mainContext]];
-}
 
-+ (NSUInteger)countOnMainWithPredicate:(id)predicateOrString, ...
+//TODO：在主线程中操作
++ (NSUInteger)countInMainWithPredicate:(id)predicateOrString, ...
 {
     SET_PREDICATE_WITH_VARIADIC_ARGS
     return [self countInContext:[NSManagedObjectContext mainContext] predicate:predicate];
 }
 
-//在子线程中操作
-+ (instancetype)insertObjectWithDictionary:(NSDictionary *)dictionary
++ (instancetype)fetchSingleInMainWithPredicate:(id)predicateOrString, ...
 {
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-
-    NSManagedObject *object = [self insertInContext:context];
-    [object populateWithDictionary:dictionary];
-    [context saveNested];
-    
-    return object;
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchSingleInContext:[NSManagedObjectContext mainContext] predicate:predicate];
 }
 
-+ (NSMutableArray *)insertObjectsWithArray:(NSArray *)array
++ (instancetype)fetchOrInsertSingleInMainWithPredicate:(id)predicateOrString, ...
 {
-    NSManagedObject *object = nil;
-    NSMutableArray *objects = [NSMutableArray array];
-    
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    
-    for (NSDictionary *item in array) {
-        object = [self insertInContext:context];
-        [object populateWithDictionary:item];
-        [objects addObject:object];
-    }
-    [context saveNested];
-    
-    return objects;
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchOrInsertSingleInContext:[NSManagedObjectContext mainContext] predicate:predicate];
 }
 
-+ (void)deleteObjects:(NSArray *)manyObject
++ (NSArray *)fetchInMainWithPredicate:(id)predicateOrString, ...
 {
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-    for (NSManagedObject *object in manyObject){
-        [[self fetchWithObjectID:object.objectID context:context] delete];
-    }
-    [context saveNested];
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchInContext:[NSManagedObjectContext mainContext] predicate:predicate];
 }
 
-+ (void)emptyTable
++ (NSArray *)fetchInMainWithRequest:(void (^)(NSFetchRequest* request))block
 {
-    NSManagedObjectContext *context = [NSManagedObjectContext backgroundContext];
-
-    NSArray *objects = [self fetchInContext:context predicate:nil];
-    for (NSManagedObject *object in objects){
-        [object delete];
-    }
-    [context saveNested];
+    return [self fetchWithRequest:block context:[NSManagedObjectContext mainContext]];
 }
 
-+ (NSUInteger)countOnBgWithPredicate:(id)predicateOrString, ...
+
+//TODO：在子线程中操作
++ (NSUInteger)countInBgWithPredicate:(id)predicateOrString, ...
 {
     SET_PREDICATE_WITH_VARIADIC_ARGS
     return [self countInContext:[NSManagedObjectContext backgroundContext] predicate:predicate];
 }
 
-+ (NSArray *)fetchOnBgWithPredicate:(id)predicateOrString, ...
++ (instancetype)fetchSingleInBgWithPredicate:(id)predicateOrString, ...
+{
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchSingleInContext:[NSManagedObjectContext backgroundContext] predicate:predicate];
+}
+
++ (instancetype)fetchOrInsertSingleInBgWithPredicate:(id)predicateOrString, ...
+{
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self fetchOrInsertSingleInContext:[NSManagedObjectContext backgroundContext] predicate:predicate];
+}
+
+
++ (NSArray *)fetchInBgWithPredicate:(id)predicateOrString, ...
 {
     SET_PREDICATE_WITH_VARIADIC_ARGS
     return [self fetchInContext:[NSManagedObjectContext backgroundContext] predicate:predicate];
 }
 
-+ (NSArray *)fetchOnBgWithRequest:(void (^)(NSFetchRequest* request))block
++ (NSArray *)fetchInBgWithRequest:(void (^)(NSFetchRequest* request))block
 {
     return [self fetchWithRequest:block context:[NSManagedObjectContext backgroundContext]];
 }
-
-
 
 @end

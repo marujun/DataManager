@@ -518,6 +518,20 @@ static BOOL _al_isExecutingConstraintsBlock = NO;
     return [constraint autoInstall];
 }
 
+#pragma mark Aspect Ratio
+
+/**
+ Sets the aspect ratio of the view to a specific size.
+ NOTE: The multiplier can not be modified after constraint created!
+ 
+ @param size The size to set this view's aspect ratio to.
+ @return The constraint added.
+ */
+- (NSLayoutConstraint *)autoSetAspectRatioToSize:(CGFloat)size
+{
+    return [self autoConstrainAttribute:ALDimensionWidth toAttribute:ALDimensionHeight ofView:self withMultiplier:size];
+}
+
 #pragma mark Set Dimensions
 
 /**
@@ -1349,7 +1363,7 @@ static BOOL _al_isExecutingConstraintsBlock = NO;
         
         return similarConstraint;
     }
-    
+
     [installedView al_addConstraintUsingGlobalPriority:self];
     
     return self;

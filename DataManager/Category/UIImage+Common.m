@@ -9,13 +9,16 @@
 #import "UIImage+Common.h"
 #import <Accelerate/Accelerate.h>
 
+CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
+CGFloat RadiansToDegrees(CGFloat radians) {return radians * 180/M_PI;};
+
 @implementation UIImage (Common)
 
 + (UIImage *)screenshot
 {
     CGSize imageSize = [[UIScreen mainScreen] bounds].size;
     
-    UIGraphicsBeginImageContextWithOptions(imageSize, NO, 0);
+    UIGraphicsBeginImageContextWithOptions(imageSize, NO, [UIScreen mainScreen].scale);
     
     CGContextRef context = UIGraphicsGetCurrentContext();
     
@@ -46,8 +49,14 @@
 
 + (UIImage *)imageWithColor:(UIColor *)color
 {
-    CGRect rect = CGRectMake(0, 0, 1, 1);
-    UIGraphicsBeginImageContext(rect.size);
+    return [self imageWithColor:color size:CGSizeMake(4, 4)];
+}
+
++ (UIImage *)imageWithColor:(UIColor *)color size:(CGSize)size
+{
+    CGRect rect = CGRectMake(0, 0, size.width, size.height);
+    
+    UIGraphicsBeginImageContextWithOptions(rect.size, NO, [UIScreen mainScreen].scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
     
     CGContextSetFillColorWithColor(context, [color CGColor]);
@@ -56,7 +65,7 @@
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
-    return image;
+    return [image resizableImageWithCapInsets:UIEdgeInsetsMake(1, 1, 1, 1)];;
 }
 
 + (UIImage *)imageWithColor:(UIColor *)color cornerRadius:(CGFloat)cornerRadius
@@ -65,7 +74,7 @@
     CGRect rect = CGRectMake(0, 0, minEdgeSize, minEdgeSize);
     UIBezierPath *roundedRect = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
     roundedRect.lineWidth = 0;
-    UIGraphicsBeginImageContextWithOptions(rect.size, NO, 0.0f);
+    UIGraphicsBeginImageContextWithOptions(rect.size, NO, [UIScreen mainScreen].scale);
     [color setFill];
     [roundedRect fill];
     [roundedRect stroke];
@@ -79,11 +88,7 @@
 + (UIImage *)imageWithView:(UIView *)view
 {
     //支持retina高分的关键
-    if(&UIGraphicsBeginImageContextWithOptions != NULL){
-        UIGraphicsBeginImageContextWithOptions(view.bounds.size, NO, [UIScreen mainScreen].scale);
-    } else {
-        UIGraphicsBeginImageContext(view.bounds.size);
-    }
+    UIGraphicsBeginImageContextWithOptions(view.bounds.size, NO, [UIScreen mainScreen].scale);
     [view.layer renderInContext:UIGraphicsGetCurrentContext()];
     
     UIImage *resImage = UIGraphicsGetImageFromCurrentImageContext();
@@ -97,7 +102,7 @@
     newSize.width = (int)newSize.width;
     newSize.height = (int)newSize.height;
     
-    UIGraphicsBeginImageContextWithOptions(newSize, NO, 0.0);
+    UIGraphicsBeginImageContextWithOptions(newSize, NO, 1);
     [self drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -128,7 +133,7 @@
 {
     CGImageRef imageRef = self.CGImage;
     CGImageRef subImageRef = CGImageCreateWithImageInRect(imageRef, clipRect);
-
+    
     UIGraphicsBeginImageContext(clipRect.size);
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextDrawImage(context, clipRect, subImageRef);
@@ -139,110 +144,42 @@
     return clipImage;
 }
 
-+ (UIImage *)defaultImage
+- (UIImage *)imageRotatedByRadians:(CGFloat)radians
 {
-    return [UIImage imageNamed:@"default_default_loading.jpg"];
+    return [self imageRotatedByDegrees:RadiansToDegrees(radians)];
 }
 
-+ (UIImage *)defaultAvatar
+- (UIImage *)imageRotatedByDegrees:(CGFloat)degrees
 {
-    return [UIImage imageNamed:@"pub_default_avatar.jpg"];
-}
-
-+ (UIImage *)defaultBigAvatar
-{
-    return [UIImage imageNamed:@"pub_big_default_avatar.jpg"];
-}
-
-
-//圆形的头像图片
-- (UIImage *)circleAvatarImage
-{
-    // when an image is set for the annotation view,
-    // it actually adds the image to the image view
+    // calculate the size of the rotated view's containing box for our drawing space
+    UIView *rotatedViewBox = [[UIView alloc] initWithFrame:CGRectMake(0,0,self.size.width, self.size.height)];
+    CGAffineTransform t = CGAffineTransformMakeRotation(DegreesToRadians(degrees));
+    rotatedViewBox.transform = t;
+    CGSize rotatedSize = rotatedViewBox.frame.size;
     
-    //圆环宽度
-    float annulusLen = 5;
-    //边框宽度
-    float borderWidth = 2;
+    // Create the bitmap context
+    UIGraphicsBeginImageContext(rotatedSize);
+    CGContextRef bitmap = UIGraphicsGetCurrentContext();
     
-    float fixWidth = self.size.width;
+    // Move the origin to the middle of the image so we will rotate and scale around the center.
+    CGContextTranslateCTM(bitmap, rotatedSize.width/2, rotatedSize.height/2);
     
-    float radius1 = fixWidth / 2;
-    float radius2 = radius1 + borderWidth;
-    float radius3 = radius2 + annulusLen;
+    //   // Rotate the image context
+    CGContextRotateCTM(bitmap, DegreesToRadians(degrees));
     
-    CGSize canvasSize = CGSizeMake(radius3 * 2, radius3 * 2);
+    // Now, draw the rotated/scaled image into the context
+    CGContextScaleCTM(bitmap, 1.0, -1.0);
+    CGContextDrawImage(bitmap, CGRectMake(-self.size.width / 2, -self.size.height / 2, self.size.width, self.size.height), [self CGImage]);
     
-    UIGraphicsBeginImageContext(canvasSize);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    
-    //抗锯齿
-    CGContextSetAllowsAntialiasing(context, true);
-    CGContextSetShouldAntialias(context, true);
-    
-    // Create the gradient's colours
-    float start = 0;
-    float end = 0;
-    
-	size_t num_locations = 2;
-	CGFloat locations[2] = { 0.0, 1.0 };
-	CGFloat components[8] = { start,start,start, 0.5,  // Start color
-        end,end,end, 0 }; // End color
-	
-	CGColorSpaceRef myColorspace = CGColorSpaceCreateDeviceRGB();
-	CGGradientRef myGradient = CGGradientCreateWithColorComponents (myColorspace, components, locations, num_locations);
-    CGPoint centerPoint = CGPointMake(radius3, radius3);
-	// Draw it!
-	CGContextDrawRadialGradient (context, myGradient, centerPoint, radius2, centerPoint, radius3, kCGGradientDrawsAfterEndLocation);
-    
-    // draw outline so that the edges are smooth:
-    // set line width
-    CGContextSetLineWidth(context, 1);
-    // set the colour when drawing lines R,G,B,A. (we will set it to the same colour we used as the start and end point of our gradient )
-    
-    //描边 抗锯齿
-    CGContextSetRGBStrokeColor(context, start, start, start, 0.5);
-    CGContextAddEllipseInRect(context, CGRectMake(annulusLen, annulusLen, radius2 * 2, radius2 * 2));
-    CGContextStrokePath(context);
-    
-    CGContextSetRGBStrokeColor(context, end, end, end, 0);
-    CGContextAddEllipseInRect(context, CGRectMake(0, 0, radius3 * 2, radius3 * 2));
-    CGContextStrokePath(context);
-    
-    //--------------------------
-    
-    float borderGap = radius3 - radius1 - borderWidth / 2;
-    UIColor *color = [UIColor whiteColor];
-    if (borderWidth > 0) {
-        CGContextSetStrokeColorWithColor(context, color.CGColor);
-        CGContextSetLineCap(context,kCGLineCapButt);
-        CGContextSetLineWidth(context, borderWidth);
-        CGContextAddEllipseInRect(context, CGRectMake(borderGap, borderGap, radius2 * 2 - borderWidth, radius2 * 2 - borderWidth));//在这个框中画圆
-        
-        CGContextStrokePath(context);
-    }
-    
-    float imageGap = radius3 - radius1;
-    CGRect rect = CGRectMake(imageGap, imageGap, fixWidth , fixWidth);
-    CGContextAddEllipseInRect(context, rect);
-    CGContextClip(context);
-    [self drawInRect:rect];
-    
-    UIImage *newimg = UIGraphicsGetImageFromCurrentImageContext();
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
-    CGColorSpaceRelease(myColorspace);
-    CGGradientRelease(myGradient);
-    
-    return newimg;
+    return newImage;
 }
 
 //模糊化图片
-- (UIImage *)bluredImageWithRadius:(CGFloat)radius
+- (UIImage *)imageBluredByRadius:(CGFloat)radius
 {
-    //TODO:  requires iOS 6
-    
     //create our blurred image
     CIContext *context = [CIContext contextWithOptions:nil];
     CIImage *inputImage = [CIImage imageWithCGImage:self.CGImage];
@@ -254,8 +191,10 @@
     CIImage *result = [filter valueForKey:kCIOutputImageKey];
     //CIGaussianBlur has a tendency to shrink the image a little, this ensures it matches up exactly to the bounds of our original image
     CGImageRef cgImage = [context createCGImage:result fromRect:[inputImage extent]];
+    UIImage *image = [UIImage imageWithCGImage:cgImage scale:self.scale orientation:self.imageOrientation];
+    CGImageRelease(cgImage);
     
-    return [UIImage imageWithCGImage:cgImage];
+    return image;
 }
 
 //黑白图片
@@ -266,13 +205,115 @@
     CIColor *ciColor = [CIColor colorWithCGColor:[UIColor lightGrayColor].CGColor];
     CIFilter *filter = nil;
     CIImage *outputImage;
+    
     filter = [CIFilter filterWithName:@"CIColorMonochrome" keysAndValues:kCIInputImageKey, beginImage, kCIInputColorKey, ciColor, nil];
     outputImage = [filter outputImage];
     
     [EAGLContext setCurrentContext:nil];
-
-    return  [UIImage imageWithCIImage:outputImage];
+    
+    return [UIImage imageWithCIImage:outputImage scale:self.scale orientation:self.imageOrientation];
 }
 
+//灰度化图片
+- (UIImage *)grayscaleImage
+{
+    CGRect imageRect = CGRectMake(0, 0, self.size.width, self.size.height);
+    
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
+    CGContextRef context = CGBitmapContextCreate(nil, self.size.width, self.size.height, 8, 0, colorSpace, kCGImageAlphaNone);
+    CGContextDrawImage(context, imageRect, [self CGImage]);
+    CGImageRef imageRef = CGBitmapContextCreateImage(context);
+    
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    
+    UIImage *newImage = [UIImage imageWithCGImage:imageRef scale:self.scale orientation:self.imageOrientation];
+    CGImageRelease(imageRef);
+    
+    return newImage;
+}
+
+- (UIImage *)invertColor
+{
+    CIImage *coreImage = [CIImage imageWithCGImage:[self CGImage]];
+    
+    CIFilter *filter = [CIFilter filterWithName:@"CIColorInvert"];
+    [filter setValue:coreImage forKey:kCIInputImageKey];
+    
+    CIImage *outputImage = [filter valueForKey:kCIOutputImageKey];
+    
+    return [UIImage imageWithCIImage:outputImage scale:self.scale orientation:self.imageOrientation];
+}
+
+
+//修正图片方向
+- (UIImage *)fixOrientation
+{
+    if (self.imageOrientation == UIImageOrientationUp) return self;
+    
+    // The UIImage methods size and drawInRect take into account
+    //  the value of its imageOrientation property
+    //  so the rendered image is rotated as necessary.
+    UIGraphicsBeginImageContextWithOptions(self.size, NO, self.scale);
+    
+    [self drawInRect:CGRectMake(0, 0, self.size.width, self.size.height)];
+    
+    UIImage *orientedImage = UIGraphicsGetImageFromCurrentImageContext();
+    
+    UIGraphicsEndImageContext();
+    
+    return orientedImage;
+}
+
+//反转后的遮罩图片
+- (UIImage *)inverseMaskImage
+{
+    UIImage *image = [UIImage imageWithColor:[UIColor blackColor] size:self.size];
+    
+    CGImageRef maskRef = self.CGImage;
+    CGImageRef mask = CGImageMaskCreate(CGImageGetWidth(maskRef),
+                                        CGImageGetHeight(maskRef),
+                                        CGImageGetBitsPerComponent(maskRef),
+                                        CGImageGetBitsPerPixel(maskRef),
+                                        CGImageGetBytesPerRow(maskRef),
+                                        CGImageGetDataProvider(maskRef), NULL, false);
+    
+    CGImageRef sourceImage = [image CGImage];
+    CGImageRef imageWithAlpha = sourceImage;
+    //add alpha channel for images that don't have one (ie GIF, JPEG, etc...)
+    //this however has a computational cost
+    if (CGImageGetAlphaInfo(sourceImage) == kCGImageAlphaNone) {
+        //copyImageAndAddAlphaChannel
+        CGImageRef retVal = NULL;
+        
+        size_t width = CGImageGetWidth(sourceImage);
+        size_t height = CGImageGetHeight(sourceImage);
+        
+        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        CGContextRef offscreenContext = CGBitmapContextCreate(NULL, width, height, 8, 0, colorSpace,
+                                                              kCGImageAlphaPremultipliedFirst);
+        if (offscreenContext != NULL) {
+            CGContextDrawImage(offscreenContext, CGRectMake(0, 0, width, height), sourceImage);
+            retVal = CGBitmapContextCreateImage(offscreenContext);
+            CGContextRelease(offscreenContext);
+        }
+        CGColorSpaceRelease(colorSpace);
+        imageWithAlpha = retVal;
+    }
+    
+    CGImageRef masked = CGImageCreateWithMask(imageWithAlpha, mask);
+    CGImageRelease(mask);
+    
+    //release imageWithAlpha if it was created by CopyImageAndAddAlphaChannel
+    if (sourceImage != imageWithAlpha) {
+        CGImageRelease(imageWithAlpha);
+    }
+    
+    UIImage *retImage = [UIImage imageWithCGImage:masked scale:self.scale orientation:self.imageOrientation];
+    
+    CGImageRelease(masked);
+    
+    return retImage;
+}
 
 @end

@@ -9,16 +9,16 @@
 #import "ImageCache.h"
 #import "HttpManager.h"
 #import <ImageIO/ImageIO.h>
-#import "NSDate+Common.h"
-#import "UIView+Common.h"
 
-#define  IdentifyDefault    @"identify_default"
-#define  IdentifyImprove    @"identify_improve"
+#define  FadeAnimationKey   @"image_cache_fade_animation"
 
 @interface ImageCacheManager ()
 
-@property (strong, nonatomic) NSString *downloadingUrl;
-
+#if OS_OBJECT_USE_OBJC
+@property (nonatomic, strong) dispatch_queue_t synchronizeQueue;
+#else
+@property (nonatomic, assign) dispatch_queue_t synchronizeQueue;
+#endif
 @property (strong, nonatomic) NSMutableArray *identifyQueue;
 
 @property (strong, nonatomic) NSMutableDictionary *urlClassify;
@@ -28,17 +28,16 @@
 @property (strong, nonatomic) NSMutableDictionary *visitDateDictionary;
 @property (strong, nonatomic) NSString *visitPlistPath;
 
-@property (strong, nonatomic) AFHTTPRequestOperation *requestOperation;
-
 - (void)startDownload;
 
-- (void)setActiveDateForUrl:(NSString *)url;
+- (void)setActiveDateForURL:(NSString *)url;
 
 - (void)addOperation:(NSDictionary *)operation identify:(NSString *)identify;
 
 @end
 
 @implementation NSData (ImageCache)
+ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 
 + (void)dataWithURL:(NSString *)url callback:(void(^)(NSData *data))callback
 {
@@ -62,19 +61,22 @@
         return;
     }
     
-    [[ImageCacheManager defaultManager] setActiveDateForUrl:url];
+    if ([url hasPrefix:@"http"]) {
+        [[ImageCacheManager defaultManager] setActiveDateForURL:url];
+    }
     
     NSString *filePath = [self diskCachePathWithURL:url];
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         NSData *data = [NSData dataWithContentsOfFile:filePath];
+        data.disk_exist = @(YES);
         callback ? callback(data) : nil;
     }else{
         //添加到下载列表里
         NSMutableDictionary *operation = [[NSMutableDictionary alloc] init];
-        [operation setObject:url forKey:@"url"];
-        process?[operation setObject:process forKey:@"process"]:nil;
-        callback?[operation setObject:callback forKey:@"callback"]:nil;
+        [operation setValue:url forKey:@"url"];
+        [operation setValue:process forKey:@"process"];
+        [operation setValue:callback forKey:@"callback"];
         
         [[ImageCacheManager defaultManager] addOperation:operation identify:identify];
     }
@@ -94,7 +96,7 @@
     if ([url hasSuffix:@".mp4"]) {
         return [[self diskCacheDirectory] stringByAppendingPathComponent:url.lastPathComponent];
     }
-
+    
     return [[self diskCacheDirectory] stringByAppendingPathComponent:[url md5]];
 }
 
@@ -116,25 +118,6 @@
     }
     
     return cachePath;
-}
-
-/*计算NSData的MD5值(已加上时间戳，保证相同的data在不同时刻MD5值不相同)*/
-- (NSString *)md5
-{
-    if(self == nil || [self length] == 0){
-        return nil;
-    }
-    
-    unsigned char md5Buffer[CC_MD5_DIGEST_LENGTH];
-    CC_MD5(self.bytes, (CC_LONG)self.length, md5Buffer);
-    
-    NSMutableString *output = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
-    for(int i = 0; i < CC_MD5_DIGEST_LENGTH; i++){
-        [output appendFormat:@"%02x",md5Buffer[i]];
-    }
-
-    //保证相同的文件在不同时刻MD5值不相同
-    return [[NSString stringWithFormat:@"%@_%@",output,[[NSDate date] timestamp]] md5];
 }
 
 + (NSString *)contentTypeForImageData:(NSData *)data
@@ -171,8 +154,25 @@
 
 @end
 
+#define ImageMemoryCacheSizeKey @"ImageMemoryCacheSizeKey"
+
+static NSMutableDictionary *memoryCacheImageDictionary;
+
 @implementation UIImage (ImageCache)
 ADD_DYNAMIC_PROPERTY(NSString *,cache_url,setCache_url);
+ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
+
++ (void)cleanMemoryCache
+{
+    @synchronized(memoryCacheImageDictionary) {
+        [memoryCacheImageDictionary removeAllObjects];
+    }
+}
+
++ (NSUInteger)memoryCacheSizeInBytes
+{
+    return [memoryCacheImageDictionary[ImageMemoryCacheSizeKey] unsignedIntegerValue];
+}
 
 + (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback
 {
@@ -199,9 +199,23 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_url,setCache_url);
         } else{
             lastImage = [UIImage imageWithData:data];
         }
-
+        lastImage.disk_exist = data.disk_exist;
+        
         if (lastImage) {
             lastImage.cache_url = url;
+            
+            //内存里只缓存小于60K的图片
+            if (data.length < 60*1024) {
+                @synchronized(memoryCacheImageDictionary) {
+                    if (!memoryCacheImageDictionary) {
+                        memoryCacheImageDictionary = [NSMutableDictionary dictionary];
+                    }
+                    [memoryCacheImageDictionary setObject:lastImage forKey:url];
+                    
+                    NSUInteger size = [memoryCacheImageDictionary[ImageMemoryCacheSizeKey] unsignedIntegerValue];
+                    [memoryCacheImageDictionary setObject:@(size+data.length) forKey:ImageMemoryCacheSizeKey];
+                }
+            }
         } else if(data) {
             NSString *filePath = [NSData diskCachePathWithURL:url];
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
@@ -324,9 +338,25 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 }
 - (void)setImageURL:(NSString *)url callback:(void(^)(UIImage *image))callback
 {
+    [self setImageURL:url identify:nil callback:callback];
+}
+- (void)setImageURL:(NSString *)url identify:(NSString *)identify callback:(void(^)(UIImage *image))callback
+{
     self.cache_url = url;
-    if (!self.cache_identify || [self.cache_identify isEqualToString:IdentifyDefault]) {
-        self.cache_identify = [ImageCacheManager identifyOfView:self];
+    
+    if(url && memoryCacheImageDictionary[url]){
+        [self.layer removeAnimationForKey:FadeAnimationKey];
+        self.image = memoryCacheImageDictionary[url];
+        callback ? callback(self.image) : nil;
+        return;
+    }
+    
+    if(identify && identify.length) {
+        self.cache_identify = identify;
+    } else {
+        if (!self.cache_identify || [self.cache_identify isEqualToString:ImageCacheIdentifyDefault]) {
+            self.cache_identify = [ImageCacheManager identifyOfView:self];
+        }
     }
     
     __weak __typeof(self)wself = self;
@@ -336,7 +366,18 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
             __strong UIImageView *sself = wself;
             if (!sself) return;
             if (image && [image.cache_url isEqualToString:sself.cache_url]) {
-                sself.image=image;
+                [sself.layer removeAnimationForKey:FadeAnimationKey];
+                if (image.disk_exist.boolValue) {
+                    sself.image=image;
+                } else {
+                    CATransition *transition = [CATransition animation];
+                    transition.duration = 0.25;
+                    transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+                    transition.type = kCATransitionFade;
+                    sself.image=image;
+                    [sself.layer addAnimation:transition forKey:FadeAnimationKey];
+                }
+                
                 callback ? callback(image) : nil;
             }
         });
@@ -362,8 +403,26 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 - (void)setImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
 {
     self.cache_url = url;
-    if (!self.cache_identify || [self.cache_identify isEqualToString:IdentifyDefault]) {
-        self.cache_identify = [ImageCacheManager identifyOfView:self];
+    
+    [self setImageURL:url forState:state identify:nil callback:callback];
+}
+- (void)setImageURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify callback:(void(^)(UIImage *image))callback
+{
+    self.cache_url = url;
+    
+    if(url && memoryCacheImageDictionary[url]){
+        [self.layer removeAnimationForKey:FadeAnimationKey];
+        [self setImage:memoryCacheImageDictionary[url] forState:state];
+        callback ? callback([self imageForState:state]) : nil;
+        return;
+    }
+    
+    if(identify && identify.length) {
+        self.cache_identify = identify;
+    } else {
+        if (!self.cache_identify || [self.cache_identify isEqualToString:ImageCacheIdentifyDefault]) {
+            self.cache_identify = [ImageCacheManager identifyOfView:self];
+        }
     }
     
     __weak __typeof(self)wself = self;
@@ -373,7 +432,18 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
             __strong UIButton *sself = wself;
             if (!sself) return;
             if (image && [image.cache_url isEqualToString:sself.cache_url]) {
-                [self setImage:image forState:state];
+                [sself.layer removeAnimationForKey:FadeAnimationKey];
+                if (image.disk_exist.boolValue) {
+                    [sself setImage:image forState:state];
+                } else {
+                    CATransition *transition = [CATransition animation];
+                    transition.duration = 0.25;
+                    transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+                    transition.type = kCATransitionFade;
+                    [sself setImage:image forState:state];
+                    [sself.layer addAnimation:transition forKey:FadeAnimationKey];
+                }
+                
                 callback ? callback(image) : nil;
             }
         });
@@ -393,9 +463,25 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 }
 - (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
 {
+    [self setBackgroundImageURL:url forState:state identify:nil callback:callback];
+}
+- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify callback:(void(^)(UIImage *image))callback
+{
     self.cache_url = url;
-    if (!self.cache_identify || [self.cache_identify isEqualToString:IdentifyDefault]) {
-        self.cache_identify = [ImageCacheManager identifyOfView:self];
+    
+    if(url && memoryCacheImageDictionary[url]){
+        [self.layer removeAnimationForKey:FadeAnimationKey];
+        [self setBackgroundImage:memoryCacheImageDictionary[url] forState:state];
+        callback ? callback([self backgroundImageForState:state]) : nil;
+        return;
+    }
+    
+    if(identify && identify.length) {
+        self.cache_identify = identify;
+    } else {
+        if (!self.cache_identify || [self.cache_identify isEqualToString:ImageCacheIdentifyDefault]) {
+            self.cache_identify = [ImageCacheManager identifyOfView:self];
+        }
     }
     
     __weak __typeof(self)wself = self;
@@ -405,7 +491,18 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
             __strong UIButton *sself = wself;
             if (!sself) return;
             if (image && [image.cache_url isEqualToString:sself.cache_url]) {
-                [self setBackgroundImage:image forState:state];
+                [sself.layer removeAnimationForKey:FadeAnimationKey];
+                if (image.disk_exist.boolValue) {
+                    [sself setBackgroundImage:image forState:state];
+                } else {
+                    CATransition *transition = [CATransition animation];
+                    transition.duration = 0.25;
+                    transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+                    transition.type = kCATransitionFade;
+                    [sself setBackgroundImage:image forState:state];
+                    [sself.layer addAnimation:transition forKey:FadeAnimationKey];
+                }
+                
                 callback ? callback(image) : nil;
             }
         });
@@ -427,87 +524,10 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 }
 
 /*遍历文件夹获得文件夹大小，返回多少M*/
-+ (float)folderSizeAtPath: (NSString *)folderPath
++ (CGFloat)folderSizeAtPath: (NSString *)folderPath
 {
     const char* path = [folderPath cStringUsingEncoding:NSUTF8StringEncoding];
     return [self _folderSizeAtPath:path]/(1024.0*1024.0);
-}
-
-/*计算文件的MD5值(已加上时间戳，保证相同的文件在不同时刻MD5值不相同)*/
-+ (NSString *)fileMd5AtPath:(NSString *)path
-{
-    NSString *output = (__bridge_transfer NSString *)FileMD5HashCreateWithPath((__bridge CFStringRef)path, 0);
-    
-    //保证相同的文件在不同时刻MD5值不相同
-    return [[NSString stringWithFormat:@"%@_%@",output,[[NSDate date] timestamp]] md5];
-}
-
-CFStringRef FileMD5HashCreateWithPath(CFStringRef filePath, size_t chunkSizeForReadingData)
-{
-    // Declare needed variables
-    CFStringRef result = NULL;
-    CFReadStreamRef readStream = NULL;
-    
-    // Get the file URL
-    CFURLRef fileURL =
-    CFURLCreateWithFileSystemPath(kCFAllocatorDefault, (CFStringRef)filePath, kCFURLPOSIXPathStyle, false);
-    if (!fileURL) goto done;
-    
-    // Create and open the read stream
-    readStream = CFReadStreamCreateWithFile(kCFAllocatorDefault, (CFURLRef)fileURL);
-    if (!readStream) goto done;
-    bool didSucceed = (bool)CFReadStreamOpen(readStream);
-    if (!didSucceed) goto done;
-    
-    // Initialize the hash object
-    CC_MD5_CTX hashObject;
-    CC_MD5_Init(&hashObject);
-    
-    // Make sure chunkSizeForReadingData is valid
-    if (!chunkSizeForReadingData) {
-        chunkSizeForReadingData = 1024*8;
-    }
-    
-    // Feed the data to the hash object
-    bool hasMoreData = true;
-    while (hasMoreData) {
-        uint8_t buffer[chunkSizeForReadingData];
-        CFIndex readBytesCount = CFReadStreamRead(readStream, (UInt8 *)buffer, (CFIndex)sizeof(buffer));
-        if (readBytesCount == -1) break;
-        if (readBytesCount == 0) {
-            hasMoreData = false;
-            continue;
-        }
-        CC_MD5_Update(&hashObject, (const void *)buffer, (CC_LONG)readBytesCount);
-    }
-    
-    // Check if the read operation succeeded
-    didSucceed = !hasMoreData;
-    
-    // Compute the hash digest
-    unsigned char digest[CC_MD5_DIGEST_LENGTH];
-    CC_MD5_Final(digest, &hashObject);
-    
-    // Abort if the read operation failed
-    if (!didSucceed) goto done;
-    
-    // Compute the string result
-    char hash[2 * sizeof(digest) + 1];
-    for (size_t i = 0; i < sizeof(digest); ++i) {
-        snprintf(hash + (2 * i), 3, "%02x", (int)(digest[i]));
-    }
-    result = CFStringCreateWithCString(kCFAllocatorDefault, (const char *)hash, kCFStringEncodingUTF8);
-    
-done:
-    
-    if (readStream) {
-        CFReadStreamClose(readStream);
-        CFRelease(readStream);
-    }
-    if (fileURL) {
-        CFRelease(fileURL);
-    }
-    return result;
 }
 
 + (long long)_folderSizeAtPath:(const char*)folderPath
@@ -562,6 +582,7 @@ done:
 {
     self = [super init];
     if (self) {
+        _synchronizeQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
         _identifyQueue = [[NSMutableArray alloc] init];
         
         _urlClassify = [[NSMutableDictionary alloc] init];
@@ -571,14 +592,44 @@ done:
         _visitPlistPath = [[UIImage diskCacheDirectory] stringByAppendingPathComponent:@"date.plist"];
         _visitDateDictionary = [[NSMutableDictionary alloc] initWithContentsOfFile:_visitPlistPath];
         _visitDateDictionary = _visitDateDictionary?:[[NSMutableDictionary alloc] init];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(appDidReceiveMemoryWarningNotification)
+                                                     name:UIApplicationDidReceiveMemoryWarningNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(appDidEnterBackgroundNotification)
+                                                     name:UIApplicationDidEnterBackgroundNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(appWillTerminateNotification)
+                                                     name:UIApplicationWillTerminateNotification
+                                                   object:nil];
     }
     return self;
+}
+
+- (void)appDidReceiveMemoryWarningNotification
+{
+    [UIImage cleanMemoryCache];
+    
+    NSLog(@"已清除内存中缓存的图片！！！");
+}
+
+- (void)appDidEnterBackgroundNotification
+{
+    [self autoCleanImageCache];
+}
+
+- (void)appWillTerminateNotification
+{
+    [self synchronizeVistDateList];
 }
 
 + (NSString *)identifyOfView:(UIView *)view
 {
     if (!view) {
-        return IdentifyDefault;
+        return ImageCacheIdentifyDefault;
     }
     
     UIViewController *nearsetVC = view.nearsetViewController;
@@ -586,10 +637,10 @@ done:
         return NSStringFromClass([nearsetVC class]);
     }
     
-    return IdentifyDefault;
+    return ImageCacheIdentifyDefault;
 }
 
-- (void)setActiveDateForUrl:(NSString *)url
+- (void)setActiveDateForURL:(NSString *)url
 {
     NSString *timestamp = [[NSDate date] timestamp];
     [_visitDateDictionary setObject:timestamp forKey:[url md5]];
@@ -616,7 +667,7 @@ done:
         [self synchronizeVistDateList];
         
         //删除文件
-        dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
             for (NSString *key in waitArray) {
                 NSString *path = [[UIImage diskCacheDirectory] stringByAppendingPathComponent:key];
                 [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
@@ -627,9 +678,9 @@ done:
 
 - (void)synchronizeVistDateList
 {
-    NSDictionary *lastList = [_visitDateDictionary copy];
+    NSDictionary *lastList = [NSDictionary dictionaryWithDictionary:_visitDateDictionary];
     
-    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+    dispatch_async(_synchronizeQueue, ^{
         @try {
             [lastList writeToFile:_visitPlistPath atomically:YES];
         }
@@ -683,7 +734,7 @@ done:
     }
 }
 
-- (void)openOperationForIdentify:(NSString *)identify
+- (void)bringIdentifyToFront:(NSString *)identify
 {
     @synchronized(_identifyQueue){
         NSString *newestId = [_identifyQueue firstObject];
@@ -703,24 +754,24 @@ done:
     }
 }
 
-- (void)improvePriorityForUrl:(NSString *)url
+- (void)bringURLToFront:(NSString *)url
 {
     if(!url || !url.length){
         return;
     }
     
     @synchronized(_identifyQueue){
-
-        //取消当前正在下载的任务
-        [_requestOperation cancel];
         
-        [_identifyQueue removeObject:IdentifyImprove];
-        [_identifyQueue addObject:IdentifyImprove];
-
-        NSMutableArray *targetArray = _identifyClassify[IdentifyImprove];
+//        //取消当前正在下载的任务
+//        [_requestOperation cancel];
+        
+        [_identifyQueue removeObject:ImageCacheIdentifyImprove];
+        [_identifyQueue insertObject:ImageCacheIdentifyImprove atIndex:0];
+        
+        NSMutableArray *targetArray = _identifyClassify[ImageCacheIdentifyImprove];
         if(!targetArray){
             targetArray = [NSMutableArray array];
-            [_identifyClassify setObject:targetArray forKey:IdentifyImprove];
+            [_identifyClassify setObject:targetArray forKey:ImageCacheIdentifyImprove];
         }
 
         NSMutableArray *uniqueIdArray = _urlClassify[url];
@@ -735,7 +786,7 @@ done:
     }
 }
 
-- (void)improvePriorityForUrlArray:(NSArray *)urlArray
+- (void)bringURLArrayToFront:(NSArray *)urlArray
 {
     if(!urlArray || !urlArray.count){
         return;
@@ -743,16 +794,16 @@ done:
     
     @synchronized(_identifyQueue){
         
-        //取消当前正在下载的任务
-        [_requestOperation cancel];
+//        //取消当前正在下载的任务
+//        [_requestOperation cancel];
         
-        [_identifyQueue removeObject:IdentifyImprove];
-        [_identifyQueue addObject:IdentifyImprove];
+        [_identifyQueue removeObject:ImageCacheIdentifyImprove];
+        [_identifyQueue insertObject:ImageCacheIdentifyImprove atIndex:0];
         
-        NSMutableArray *targetArray = _identifyClassify[IdentifyImprove];
+        NSMutableArray *targetArray = _identifyClassify[ImageCacheIdentifyImprove];
         if(!targetArray){
             targetArray = [NSMutableArray array];
-            [_identifyClassify setObject:targetArray forKey:IdentifyImprove];
+            [_identifyClassify setObject:targetArray forKey:ImageCacheIdentifyImprove];
         }
         
         for (int i=(int)(urlArray.count-1); i>=0; i--) {
@@ -771,7 +822,7 @@ done:
     }
 }
 
-- (void)cancelLoadingUrl:(NSString *)url
+- (void)cancelLoadingURL:(NSString *)url
 {
     if(!url || !url.length){
         return;
@@ -837,16 +888,28 @@ done:
             }
         };
         
-        void(^completeBlock)(BOOL, NSDictionary *) = ^(BOOL successed, NSDictionary *result)
+        void(^completeBlock)(BOOL, HttpResponse *response) = ^(BOOL successed, HttpResponse *response)
         {
             NSData *lastData = nil;
-            if (successed && !result) {
+            if (successed && !response.payload) {
                 lastData = [NSData dataWithContentsOfFile:filePath];
             }
             
             @synchronized(_identifyQueue){
                 
-                if (!_requestOperation || !_requestOperation.error || _requestOperation.error.code != NSURLErrorCancelled) {
+                NSError *resError = _requestOperation.error;
+                BOOL fileExist = YES;
+                BOOL isThumbnail = [_downloadingUrl rangeOfString:@"x_"].length?YES:NO;
+                
+                //404：表示文件不存在
+                if (resError.code==NSURLErrorBadServerResponse && [resError.localizedDescription hasSuffix:@"(404)"] && !isThumbnail) {
+                    fileExist = NO;
+                    
+                    lastData = [NSData dataWithContentsOfFile:[ResourcePath stringByAppendingPathComponent:@"pub_default_not_exist.png"]];
+                    [lastData writeToFile:filePath atomically:true];
+                }
+                
+                if (!_requestOperation || !resError || resError.code != NSURLErrorCancelled || !fileExist) {
                     
                     //不是手动取消的任务即使失败了也要从队列中移除
                     [taskQueue removeObject:downloadingUniqueId];

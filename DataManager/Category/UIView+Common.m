@@ -8,7 +8,6 @@
 
 #import "UIView+Common.h"
 #import <objc/runtime.h>
-#import "UIView+AutoLayout.h"
 
 @interface BlurView ()
 
@@ -77,13 +76,6 @@
 @end
 
 @implementation UIView (Common)
-
-- (void)removeAllSubview
-{
-    for (UIView *item in self.subviews) {
-        [item removeFromSuperview];
-    }
-}
 
 - (UIView *)findFirstResponder
 {
@@ -277,6 +269,30 @@ const char tapGestureKey;
 {
     if (gesture.state == UIGestureRecognizerStateRecognized){
         void(^action)(void) = objc_getAssociatedObject(self, &tapBlockKey);
+        action ? action() : nil;
+    }
+}
+
+const char panBlockKey;
+const char panGestureKey;
+
+- (void)setPanActionWithBlock:(void (^)(void))block
+{
+    self.userInteractionEnabled = YES;
+    
+    UIPanGestureRecognizer *gesture = objc_getAssociatedObject(self, &panGestureKey);
+    if (!gesture){
+        gesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(swipeGestureAction:)];
+        [self addGestureRecognizer:gesture];
+        objc_setAssociatedObject(self, &panGestureKey, gesture, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    objc_setAssociatedObject(self, &panBlockKey, block, OBJC_ASSOCIATION_COPY);
+}
+
+- (void)swipeGestureAction:(UIPanGestureRecognizer *)gesture
+{
+    if (gesture.state == UIGestureRecognizerStateRecognized){
+        void(^action)(void) = objc_getAssociatedObject(self, &panBlockKey);
         action ? action() : nil;
     }
 }

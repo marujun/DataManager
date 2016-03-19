@@ -8,6 +8,7 @@
 
 #import "DBObject.h"
 #import <objc/runtime.h>
+#import "NSDate+Common.h"
 
 //http://nshipster.cn/type-encodings/
 //https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html
@@ -16,12 +17,6 @@
 
 
 @interface DBObject ()
-{
-    BOOL _saveIng;
-    BOOL _hasRegObserver;
-    
-    NSManagedObjectID *_objectID;
-}
 
 @end
 
@@ -48,6 +43,34 @@
     return self;
 }
 
++ (instancetype)modelWithObject:(id)object
+{
+    DBObject *model = [[self alloc] init];
+    [model populateWithObject:object];
+    
+    return model;
+}
+
++ (NSMutableArray *)modelListWithArray:(NSArray *)array
+{
+    NSMutableArray *result = [NSMutableArray new];
+    for (NSDictionary *item in array) {
+        NSObject *obj = [self modelWithObject:item];
+        if (obj) [result addObject:obj];
+    }
+    return result;
+}
+
++ (NSDictionary *)propertyMapper
+{
+    return nil;
+}
+
++ (NSDictionary *)propertyGenericClass
+{
+    return nil;
+}
+
 /**
  *  为 NSMutableDictionary、NSMutableArray 类型的成员变量初始化一个值
  */
@@ -68,25 +91,6 @@
 }
 
 /**
- *  NSManagedObjectContextObjectsDidChangeNotification 监听方法
- */
-- (void)handleManagedObjectChange:(NSNotification *)note
-{
-    NSSet *updatedObjects = [[note userInfo] objectForKey:NSUpdatedObjectsKey];
-    for (NSManagedObject *changedObject in updatedObjects) {
-        if ([changedObject.objectID isEqual:_objectID]) {
-            if (_saveIng) {
-                _saveIng = NO;
-            }else{
-                [self populateWithObject:changedObject];
-            }
-            
-            break;
-        }
-    }
-}
-
-/**
  *  通过其他对象为当前对象填充对应成员变量的值
  */
 - (void)populateWithObject:(id)object
@@ -96,34 +100,53 @@
     }
     
     NSArray *properties = nil;
-    if ([object isKindOfClass:[NSManagedObject class]]) {
-        _objectID = [(NSManagedObject *)object objectID];
-        properties = [[self class] propertiesOfClass:[object class] baseClass:[NSManagedObject class]];
-        
-        if (!_hasRegObserver) {
-            _hasRegObserver = YES;
-            
-            /**
-             *  监听绑定的NSManagedObject对象的值的变化
-             */
-            [[NSNotificationCenter defaultCenter] addObserver:self
-                                                     selector:@selector(handleManagedObjectChange:)
-                                                         name:NSManagedObjectContextObjectsDidChangeNotification
-                                                       object:[NSManagedObjectContext backgroundContext]];
-        }
-    }
-    else if ([object isKindOfClass:[NSDictionary class]]){
+    NSDictionary *mapper = nil;
+    
+    if ([object isKindOfClass:[NSDictionary class]]){
         properties = [object allKeys];
+        
+        mapper = [[self class] propertyMapper];
     }
-    else{
+    else if ([object isKindOfClass:[NSManagedObject class]]) {
+        properties = [[self class] propertiesOfClass:[object class] baseClass:[NSManagedObject class]];
+    }
+    else {
         properties = [[self class] propertiesOfClass:[object class] baseClass:[NSObject class]];
     }
     
-    for (NSString *key in properties){
+    [properties enumerateObjectsUsingBlock:^(NSString *key, NSUInteger idx, BOOL * _Nonnull stop) {
         @try {
             [self populateValue:[object valueForKey:key] forKey:key];
         }@catch (NSException *exception) { }
-    }
+    }];
+    
+    if (!mapper) return;
+    
+    [mapper enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+        @try {
+            id value;
+            if ([obj isKindOfClass:[NSString class]] && [obj length]) {
+                NSArray *keyPath = [obj componentsSeparatedByString:@"."];
+                if (keyPath.count > 1) value = [object valueForKeyPath:obj];
+                else value = [object valueForKey:obj];
+            }
+            else if ([obj isKindOfClass:[NSArray class]]) {
+                for (NSString *oneKey in ((NSArray *)obj)) {
+                    if (![oneKey isKindOfClass:[NSString class]]) continue;
+                    if (!oneKey.length || value) continue;
+                    
+                    NSArray *keyPath = [oneKey componentsSeparatedByString:@"."];
+                    if (keyPath.count > 1) value = [object valueForKeyPath:oneKey];
+                    else value = [object valueForKey:oneKey];
+                }
+            }
+            
+            if (value) {
+                [self populateValue:value forKey:key];
+            }
+        }
+        @catch (NSException *exception) { }
+    }];
 }
 
 /**
@@ -153,7 +176,8 @@
         } else if (strcmp(raw_type, @encode(short)) == 0) {
             value = [NSNumber numberWithShort:[value shortValue]];
         } else if (strcmp(raw_type, @encode(long)) == 0) {
-            value = [NSNumber numberWithLong:[value longValue]];
+            if([value respondsToSelector:@selector(longValue)]) value = [NSNumber numberWithLong:[value longValue]];
+            else value = [NSNumber numberWithLong:[value intValue]];
         } else if (strcmp(raw_type, @encode(long long)) == 0) {
             value = [NSNumber numberWithLongLong:[value longLongValue]];
         } else if (strcmp(raw_type, @encode(unsigned char)) == 0) {
@@ -163,20 +187,73 @@
         } else if (strcmp(raw_type, @encode(unsigned short)) == 0) {
             value = [NSNumber numberWithUnsignedShort:[value unsignedShortValue]];
         } else if (strcmp(raw_type, @encode(unsigned long)) == 0) {
-            value = [NSNumber numberWithUnsignedLong:[value unsignedLongValue]];
+            if([value respondsToSelector:@selector(unsignedLongValue)]) value = [NSNumber numberWithLong:[value unsignedLongValue]];
+            else value = [NSNumber numberWithLong:[value unsignedIntValue]];
         } else if (strcmp(raw_type, @encode(unsigned long long)) == 0) {
             value = [NSNumber numberWithUnsignedLongLong:[value unsignedLongLongValue]];
         } else if (type_string.length>3 && [type_string hasPrefix:@"@\""] && [type_string hasSuffix:@"\""]) {
             NSRange range = NSMakeRange(2, type_string.length-3);
             Class class = NSClassFromString([type_string substringWithRange:range]);
-            value = [self objectWithValue:value class:class];
+            value = [self objectWithKey:key value:value class:class];
+        } else if ([type_string hasPrefix:@"{"]) {
+            value = [self structWithType:type_string value:value];
         }
         
         [self setValue:value forKey:key];
     }
     @catch (NSException *exception) {
-        FLOG(@"populate key:%@ value:%@ exception: %@", key, value, exception);
+        NSLog(@"populate key:%@ value:%@ exception: %@", key, value, exception);
     }
+}
+
+- (id)structWithType:(NSString *)type value:(id)value
+{
+    if (!value || ![value isKindOfClass:[NSString class]]) return value;
+    
+    // 32 bit || 64 bit
+    if ([type isEqualToString:@"{CGSize=ff}"] || [type isEqualToString:@"{CGSize=dd}"]) {
+        return [NSValue valueWithCGSize:CGSizeFromString(value)];
+    }
+    else if ([type isEqualToString:@"{CGPoint=ff}"] || [type isEqualToString:@"{CGPoint=dd}"]) {
+        return [NSValue valueWithCGPoint:CGPointFromString(value)];
+    }
+    else if ([type isEqualToString:@"{CGRect={CGPoint=ff}{CGSize=ff}}"] || [type isEqualToString:@"{CGRect={CGPoint=dd}{CGSize=dd}}"]) {
+        return [NSValue valueWithCGRect:CGRectFromString(value)];
+    }
+    else if ([type isEqualToString:@"{CGAffineTransform=ffffff}"] || [type isEqualToString:@"{CGAffineTransform=dddddd}"]) {
+        return [NSValue valueWithCGAffineTransform:CGAffineTransformFromString(value)];
+    }
+    else if ([type isEqualToString:@"{UIEdgeInsets=ffff}"] || [type isEqualToString:@"{UIEdgeInsets=dddd}"]) {
+        return [NSValue valueWithUIEdgeInsets:UIEdgeInsetsFromString(value)];
+    }
+    else if ([type isEqualToString:@"{UIOffset=ff}"] || [type isEqualToString:@"{UIOffset=dd}"]) {
+        return [NSValue valueWithUIOffset:UIOffsetFromString(value)];
+    }
+    return value;
+}
+
+- (NSDate *)dateWithValue:(id)value
+{
+    NSDate *date = nil;
+    if ([value isKindOfClass:[NSDate class]]) {
+        date = value;
+    }
+    if ([value isKindOfClass:[NSNumber class]]) {
+        date = [NSDate dateWithTimeStamp:[value doubleValue]];
+    }
+    else if ([value isKindOfClass:[NSString class]]) {
+        if ([value length] == 10 || [value length] == 13 ) {
+            date = [NSDate dateWithTimeStamp:[value doubleValue]];
+        }
+        else if ([value length] == 19) {
+            date = [value dateWithDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+        }
+        else if ([value length] == 16) {
+            date = [value dateWithDateFormat:@"yyyy-MM-dd HH:mm"];
+        }
+    }
+    
+    return date;
 }
 
 #define ConvertValueToObject  if (value && [value isKindOfClass:[NSString class]]) {\
@@ -184,20 +261,30 @@
 value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];\
 } @catch (NSException *exception) { }}
 
-- (id)objectWithValue:(id)value class:(Class)class
+- (id)objectWithKey:(NSString *)key value:(id)value class:(Class)class
 {
+    id toClass = [[[self class] propertyGenericClass] objectForKey:key];
+    
     if (class==[NSMutableDictionary class]) {
         ConvertValueToObject
         if (value && [value isKindOfClass:[NSDictionary class]]) {
             value = [NSMutableDictionary dictionaryWithDictionary:value];
-        }else{
+        } else {
             value = [NSMutableDictionary dictionary];
         }
     } else if (class==[NSMutableArray class]) {
         ConvertValueToObject
         if (value && [value isKindOfClass:[NSArray class]]) {
-            value = [NSMutableArray arrayWithArray:value];
-        }else{
+            if (toClass) {
+                NSMutableArray *array = [NSMutableArray array];
+                for (id item in value) {
+                    [array addObject:[self objectWithValue:item toClass:toClass]];
+                }
+                value = array;
+            } else {
+                value = [NSMutableArray arrayWithArray:value];
+            }
+        } else {
             value = [NSMutableArray array];
         }
     } else if (class==[NSDictionary class]) {
@@ -209,65 +296,42 @@ value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutabl
         ConvertValueToObject
         if (![value isKindOfClass:[NSArray class]]) {
             value = nil;
+        } else if (toClass) {
+            NSMutableArray *array = [NSMutableArray array];
+            for (id item in value) {
+                [array addObject:[self objectWithValue:item toClass:toClass]];
+            }
+            value = [NSArray arrayWithArray:array];
         }
+    } else if (class == [NSDate class]) {
+        value = [self dateWithValue:value];
+    }
+    else if (class == [NSString class]) {
+        value = [value stringValue];
+    }
+    else if(toClass) {
+        value = [self objectWithValue:value toClass:toClass];
     }
     
     return value;
 }
 
-/**
- *  把模型数据保存到数据库
- *
- *  @param obj      即将保存到的数据库对象
- *  @param complete 保存完成后的回调
- */
-- (void)saveTo:(NSManagedObject **)obj complete:(void (^)(BOOL success))complete
+- (id)objectWithValue:(id)value toClass:(id)toClass
 {
-    NSManagedObjectContext *bgContext = [NSManagedObjectContext backgroundContext];
-    NSManagedObject *bgObject = nil;
-    
-    if (_objectID) {
-        bgObject = [bgContext objectRegisteredForID:_objectID];
+    if (toClass && [toClass isKindOfClass:[NSString class]]) {
+        toClass = NSClassFromString(toClass);
     }
     
-    Class cdClass = NSClassFromString([NSStringFromClass([self class]) stringByReplacingCharactersInRange:NSMakeRange(0, 2) withString:@""]);
-    if (!bgObject && cdClass) {
-        bgObject = [cdClass insertInContext:bgContext];
-        _objectID  = bgObject.objectID;
-    }
+    if (!toClass) return value;
     
-    if(obj){
-        *obj = bgObject;
-    }
-    
-    if (bgObject) {
-        for (NSString *key in self.properties) {
-            @try {
-                id value = [self valueForKey:key];
-                if (value && ([value isKindOfClass:[NSDictionary class]] || [value isKindOfClass:[NSArray class]])) {
-                    if ([NSJSONSerialization isValidJSONObject:value]) {
-                        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:value options:0  error:nil];
-                        value = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-                    }else{
-                        FLOG(@"check All objects for key:%@ are NSString, NSNumber, NSArray, NSDictionary, or NSNull !!!!!",key);
-                    }
-                }
-                
-                objc_property_t property = class_getProperty([bgObject class], [key UTF8String]);
-                if (property) {
-                    [bgObject setValue:value forKey:key];
-                }
-            }
-            @catch (NSException *exception) {
-                FLOG(@"DBObject Save To CoreData exception: %@",exception);
-            }
+    if (toClass) {
+        id obj = [[toClass alloc] init];
+        if ([obj isKindOfClass:[DBObject class]]) {
+            [(DBObject *)obj populateWithObject:value];
+            return obj;
         }
-        
-        _saveIng = YES;
-        [bgObject saveWithComplete:complete];
-    }else{
-        complete?complete(NO):nil;
     }
+    return value;
 }
 
 /**
@@ -358,9 +422,19 @@ value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutabl
 }
 
 /**
- *  获取类成员变量和其对应值的字典
+ *  获取类成员变量和其对应值的字典，不包含值为空的属性
  */
 - (NSDictionary *)dictionary
+{
+    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+    for (NSString *key in [self properties]) {
+        [dic setValue:[self valueForKey:key] forKey:key];
+    }
+    
+    return [dic copy];
+}
+
+- (NSDictionary *)dictionaryContainNull
 {
     NSMutableDictionary *dic = [NSMutableDictionary dictionary];
     for (NSString *key in [self properties]) {
@@ -373,14 +447,22 @@ value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutabl
 - (NSString *)description
 {
     NSString *des = [NSString stringWithFormat:@"<%@: %p>\n",NSStringFromClass([self class]),self];
-    return [des stringByAppendingString:[[self dictionary] description]];
+    return [des stringByAppendingString:[[self dictionaryContainNull] description]];
 }
 
-- (void)dealloc
+@end
+
+@implementation DMObject
+
+- (void)populateWithObject:(id)object
 {
-    if (_hasRegObserver) {
-        [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (object && [object isKindOfClass:[NSManagedObject class]]) {
+        _objectID = [(NSManagedObject *)object objectID];
+        
+        if ([_objectID isTemporaryID]) [object obtainPermanentID];
+        
     }
+    [super populateWithObject:object];
 }
 
 @end

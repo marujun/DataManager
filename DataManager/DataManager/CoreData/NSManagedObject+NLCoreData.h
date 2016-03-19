@@ -55,13 +55,40 @@
  @name Deleting
  
  */
-+ (void)deleteWithRequest:(void (^)(NSFetchRequest* request))block context:(NSManagedObjectContext *)context;
++ (BOOL)deleteWithRequest:(void (^)(NSFetchRequest* request))block context:(NSManagedObjectContext *)context;
 
 /**
  @name Deleting
  
  */
-+ (void)deleteInContext:(NSManagedObjectContext *)context predicate:(id)predicateOrString, ...;
++ (BOOL)deleteInContext:(NSManagedObjectContext *)context predicate:(id)predicateOrString, ...;
+
+/**
+ @name Deleting
+ WARNING: NSBatchDeleteRequest(iOS9)是直接操作数据库，所以并不会引起NSManagedObjectContext的同步更新。并且不会运行有效性验证(主要是一些关系的约束)，慎重使用！！！
+ 
+ */
++ (BOOL)deleteInContext:(NSManagedObjectContext *)context batch:(BOOL)batch predicate:(id)predicateOrString, ...;
+
+/**
+ @name Deleting
+ WARNING: NSBatchDeleteRequest(iOS9)是直接操作数据库，所以并不会引起NSManagedObjectContext的同步更新。并且不会运行有效性验证(主要是一些关系的约束)，慎重使用！！！
+ 
+ */
++ (BOOL)deleteWithRequest:(void (^)(NSFetchRequest* request))block batch:(BOOL)batch context:(NSManagedObjectContext *)context;
+
+/**
+ @name Updating
+ 
+ */
++ (BOOL)updateInContext:(NSManagedObjectContext *)context properties:(NSDictionary *)properties predicate:(id)predicateOrString, ...;
+
+/**
+ @name Updating
+ WARNING: NSBatchUpdateRequest(iOS8)并不会先将数据存入内存，而是直接操作数据库，所以并不会引起NSManagedObjectContext的同步更新。慎重使用！！！
+ 
+ */
++ (BOOL)updateInContext:(NSManagedObjectContext *)context batch:(BOOL)batch properties:(NSDictionary *)properties predicate:(id)predicateOrString, ...;
 
 #pragma mark - Counting
 

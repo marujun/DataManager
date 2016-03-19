@@ -39,7 +39,7 @@
 - (NSString *)weekDayString
 {
     NSArray *weekDayChinese = @[@"", @"星期日", @"星期一", @"星期二", @"星期三", @"星期四", @"星期五", @"星期六"];
-    NSInteger weekDay = [[self allDateComponent] weekday];
+    NSInteger weekDay = [[self dateComponents] weekday];
     @try {
         return weekDayChinese[weekDay];
     }
@@ -52,7 +52,7 @@
 - (NSString *)shortWeekDayString
 {
     NSArray *weekDayChinese = @[@"", @"周日", @"周一", @"周二", @"周三", @"周四", @"周五", @"周六"];
-    NSInteger weekDay = [[self allDateComponent] weekday];
+    NSInteger weekDay = [[self dateComponents] weekday];
     @try {
         return weekDayChinese[weekDay];
     }
@@ -65,7 +65,19 @@
 - (NSString *)monthString
 {
     NSArray *monthChinese = @[@"", @"一月", @"二月", @"三月", @"四月", @"五月", @"六月", @"七月", @"八月", @"九月", @"十月", @"十一月", @"十二月"];
-    NSInteger month = [[self allDateComponent] month];
+    NSInteger month = [[self dateComponents] month];
+    @try {
+        return monthChinese[month];
+    }
+    @catch (NSException *exception) {
+        return @"";
+    }
+}
+
+- (NSString *)monthStringWithEn
+{
+    NSArray *monthChinese = @[@"", @"Jan", @"Feb", @"Mar", @"Apr", @"May", @"Jun", @"Jul", @"Aug", @"Sep", @"Oct", @"Nov", @"Dec"];
+    NSInteger month = [[self dateComponents] month];
     @try {
         return monthChinese[month];
     }
@@ -88,18 +100,12 @@
     return [NSDate dateWithTimeIntervalSince1970:timestamp];
 }
 
-////获取字符串
-//- (NSString *)string
-//{
-//    return [self stringWithDateFormat:@"yyyy-MM-dd HH:mm:ss"];
-//}
 - (NSString *)stringWithDateFormat:(NSString *)format
 {
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
     [dateFormatter setDateFormat:format];
     return [dateFormatter stringFromDate:self];
 }
-
 
 //格式化日期 精确到天
 - (NSDate *)dateAccurateToDay
@@ -138,13 +144,13 @@
         return 0;
     }
     // 出生日期转换 年月日
-    NSDateComponents *components1 = [self allDateComponent];
+    NSDateComponents *components1 = [self dateComponents];
     NSInteger brithDateYear  = [components1 year];
     NSInteger brithDateDay   = [components1 day];
     NSInteger brithDateMonth = [components1 month];
     
     // 获取系统当前 年月日
-    NSDateComponents *components2 = [[NSDate date] allDateComponent];
+    NSDateComponents *components2 = [[NSDate date] dateComponents];
     NSInteger currentDateYear  = [components2 year];
     NSInteger currentDateDay   = [components2 day];
     NSInteger currentDateMonth = [components2 month];
@@ -177,6 +183,28 @@
     }
     return isSame;
 }
+
+
+
+//判断2个日期是否在同一个月
+- (BOOL)isSameMonthWithDate:(NSDate *)date
+{
+    BOOL isSame = NO;
+    @try {
+        NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+        NSCalendarUnit unitFlags = NSYearCalendarUnit | NSMonthCalendarUnit |  NSDayCalendarUnit;
+        NSDateComponents *componentsA = [calendar components:unitFlags fromDate:date];
+        NSDateComponents *componentsB = [calendar components:unitFlags fromDate:self];
+        
+        isSame = (componentsA.year == componentsB.year &&
+                  componentsA.month == componentsB.month);
+    }
+    @catch (NSException *exception) {
+        NSLog(@"%s [Line %d] exception:\n%@",__PRETTY_FUNCTION__, __LINE__,exception);
+    }
+    return isSame;
+}
+
 //判断日期是否为当天
 - (BOOL)isToday
 {
@@ -217,7 +245,7 @@
     return lastDate;
 }
 
-- (NSDateComponents *)allDateComponent
+- (NSDateComponents *)dateComponents
 {
     NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
 
@@ -319,6 +347,15 @@
                                                  toDate:[NSDate date]
                                                 options:0];
     return [components day];
+}
+
+- (NSUInteger)hoursAgo {
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *components = [calendar components:(NSHourCalendarUnit)
+                                               fromDate:self
+                                                 toDate:[NSDate date]
+                                                options:0];
+    return [components hour];
 }
 //午夜时间距今几天
 - (NSUInteger)daysAgoAgainstMidnight {
@@ -537,6 +574,8 @@
 + (NSString *)dbFormatString {
     return [NSDate timestampFormatString];
 }
+
+
 
 @end
 

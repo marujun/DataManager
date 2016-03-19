@@ -11,8 +11,6 @@
 #import "AFNetworking.h"
 
 @interface NSString (HttpManager)
-- (NSString *)md5;
-- (NSString *)sha1;
 - (NSString *)encode;
 - (NSString *)decode;
 - (id)object;
@@ -27,6 +25,22 @@
  @brief 返回URL的接口名称，会去除掉URL中的参数
  */
 - (NSString *)interface;
+@end
+
+@interface HttpResponse : DBObject
+
+@property (nonatomic, assign) BOOL is_cache;                   //是否是缓存数据
+
+@property (nonatomic, strong) NSURL *request_url;              //请求的链接
+@property (nonatomic, strong) NSDictionary *request_params;    //请求的参数
+
+@property (nonatomic, strong) id payload;                      //返回的结果
+@property (nonatomic, strong) NSString *hint;                  //提示语
+@property (nonatomic, strong) NSError *error;                  //错误信息
+@property (nonatomic, strong) NSDate *date;                    //返回结果的时间
+
+@property (nonatomic, strong) id extra;                         //用户自定义的额外信息
+
 @end
 
 @interface HttpManager : NSObject
@@ -48,19 +62,25 @@
 
 + (NSMutableDictionary *)getRequestBodyWithParams:(NSDictionary *)params;
 
-//AFHTTPRequestOperation可以暂停、重新开启、取消 [operation pause]、[operation resume];、[operation cancel];
+//AFHTTPRequestOperation可以暂停、重新开启、取消 [operation pause]、[operation resume]、[operation cancel];
 
-//GET 请求
-- (AFHTTPRequestOperation *)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete;
+/** GET 请求 */
+- (AFHTTPRequestOperation *)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
-//读取本地缓存数据
-- (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete;
+/** 读取本地缓存数据 */
+- (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
-//未联网时使用缓存数据
-- (AFHTTPRequestOperation *)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete;
+/** 通过keypath更新本地缓存数据，删除某个节点数据value赋值为nil；例：user.hobby[1].title */
+- (void)updateLocalCacheToUrl:(NSString *)url params:(NSDictionary *)params keyPath:(NSString *)keyPath value:(id)value;
 
-//POST 请求
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete;
+/** GET 请求并添加到缓存，未联网时使用缓存数据 */
+- (AFHTTPRequestOperation *)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+
+/** POST 请求 */
+- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+
+/** POST 请求并添加到缓存，未联网时使用缓存数据 */
+- (AFHTTPRequestOperation *)postCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 /*
  files : 需要上传的文件数组，数组里为多个字典
@@ -74,7 +94,7 @@
 - (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
-                               complete:(void (^)(BOOL successed,id result))complete;
+                               complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 
 //可以查看进度 process_block
@@ -82,20 +102,20 @@
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
                                 process:(void (^)(long writedBytes, long totalBytes))process
-                               complete:(void (^)(BOOL successed, id result))complete;
-/*
+                               complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+/**
  filePath : 下载文件的存储路径
  response : 接口返回的不是文件而是json数据
  process  : 进度
  */
 - (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
                                    filePath:(NSString *)filePath
-                                   complete:(void (^)(BOOL successed, id result))complete;
+                                   complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 - (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
                                      params:(NSDictionary *)params
                                    filePath:(NSString *)filePath
                                     process:(void (^)(long readBytes, long totalBytes))process
-                                   complete:(void (^)(BOOL successed, id result))complete;
+                                   complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 @end

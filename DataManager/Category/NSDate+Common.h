@@ -25,7 +25,8 @@
 - (NSString *)shortWeekDayString;
 //返回月份的字符串
 - (NSString *)monthString;
-
+//返回月份的字符串with En
+- (NSString *)monthStringWithEn;
 //获取字符串
 - (NSString *)string;
 - (NSString *)stringWithDateFormat:(NSString *)format;
@@ -39,6 +40,9 @@
 
 //判断2个日期是否在同一天
 - (BOOL)isSameDayWithDate:(NSDate *)date;
+//判断2个日期是否在同一个月
+- (BOOL)isSameMonthWithDate:(NSDate *)date;
+
 - (BOOL)isToday;
 
 //判断2个日期是否在同一年
@@ -47,7 +51,7 @@
 //忽略年月日
 - (NSDate *)dateRemoveYMD;
 
-- (NSDateComponents *)allDateComponent;
+- (NSDateComponents *)dateComponents;
 
 //加上时区偏移
 - (NSDate *)changeZone;
@@ -72,6 +76,8 @@
 - (NSInteger)getMinute:(NSDate *)date;
 //在当前日期前几天
 - (NSUInteger)daysAgo;
+
+- (NSUInteger)hoursAgo;
 //午夜时间距今几天
 - (NSUInteger)daysAgoAgainstMidnight;
 

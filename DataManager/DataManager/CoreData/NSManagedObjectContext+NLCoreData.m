@@ -28,9 +28,9 @@
 static dispatch_once_t*			_storeContextTokenRef;
 static dispatch_once_t*			_mainContextTokenRef;
 static dispatch_once_t*			_backgroundContextTokenRef;
-static NSManagedObjectContext*	_storeContext;
-static NSManagedObjectContext*	_mainContext;
-static NSManagedObjectContext*	_backgroundContext;
+static NSManagedObjectContext*	_storeObjectContext;
+static NSManagedObjectContext*	_mainObjectContext;
+static NSManagedObjectContext*	_backgroundObjectContext;
 
 @implementation NSManagedObjectContext (NLCoreData)
 
@@ -42,17 +42,24 @@ undoEnabled;
 - (BOOL)save
 {
 	if (![self hasChanges]) return YES;
-	
-	NSError* error = nil;
-	
-	if (![self save:&error]) {
+    
+    BOOL saveResult = NO;
+    NSError* error = nil;
+    
+    @try {
+        saveResult = [self save:&error];
+    }
+    @catch(NSException *exception) {
 #ifdef DEBUG
-        NSLog(@"%@", [self detailedDescriptionFromValidationError:error]);
+        NSLog(@"Unable to perform save: %@", (id)[exception userInfo] ?: (id)[exception reason]);
 #endif
-		return NO;
-	}
-	
-	return YES;
+    }
+    @finally {
+#ifdef DEBUG
+        if (error) NSLog(@"%@", [self detailedDescriptionFromValidationError:error]);
+#endif
+        return saveResult;
+    }
 }
 
 - (BOOL)saveNested
@@ -112,9 +119,9 @@ undoEnabled;
     if (_backgroundContextTokenRef)
         *_backgroundContextTokenRef	= 0;
 
-	_mainContext		= nil;
-	_storeContext		= nil;
-	_backgroundContext	= nil;
+	_mainObjectContext		= nil;
+	_storeObjectContext		= nil;
+	_backgroundObjectContext	= nil;
 }
 
 + (NSManagedObjectContext *)mainContext
@@ -124,12 +131,12 @@ undoEnabled;
 	
 	dispatch_once(&token, ^{
 		
-		_mainContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
-		[_mainContext setParentContext:[self storeContext]];
-        [_mainContext setDisplay_name:@"MainContext"];
+		_mainObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
+		[_mainObjectContext setParentContext:[self storeContext]];
+        [_mainObjectContext setDisplay_name:@"MainContext"];
 	});
 	
-	return _mainContext;
+	return _mainObjectContext;
 }
 
 + (NSManagedObjectContext *)storeContext
@@ -139,13 +146,15 @@ undoEnabled;
 	
 	dispatch_once(&token, ^{
 		
-		_storeContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-		[_storeContext setPersistentStoreCoordinator:[[NLCoreData shared] storeCoordinator]];
-        [_storeContext setMergePolicy:NSMergeByPropertyObjectTrumpMergePolicy];
-        [_storeContext setDisplay_name:@"StoreContext"];
+		_storeObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+        [_storeObjectContext performBlockAndWait:^{
+            [_storeObjectContext setPersistentStoreCoordinator:[[NLCoreData shared] storeCoordinator]];
+            [_storeObjectContext setMergePolicy:NSMergeByPropertyObjectTrumpMergePolicy];
+        }];
+        [_storeObjectContext setDisplay_name:@"StoreContext"];
 	});
 	
-	return _storeContext;
+	return _storeObjectContext;
 }
 
 + (NSManagedObjectContext *)backgroundContext
@@ -155,12 +164,12 @@ undoEnabled;
 	
 	dispatch_once(&token, ^{
 		
-		_backgroundContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-		[_backgroundContext setParentContext:[self mainContext]];
-        [_backgroundContext setDisplay_name:@"BackgroundContext"];
+		_backgroundObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+		[_backgroundObjectContext setParentContext:[self mainContext]];
+        [_backgroundObjectContext setDisplay_name:@"BackgroundContext"];
 	});
 	
-	return _backgroundContext;
+	return _backgroundObjectContext;
 }
 
 #pragma mark - Properties

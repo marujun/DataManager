@@ -8,52 +8,50 @@
 
 /*导入所有通过model生成的SubClass*/
 
-@interface NSManagedObject (Explain)
+typedef void(^NLCoreDataFetchCompleteBlock)(NSArray *objects);
 
+@interface NSManagedObject (Explain)
 
 - (NSDictionary *)dictionary;
 
 - (void)saveAndWait;
-- (void)removeAndWait;
-- (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block;
+- (void)deleteAndWait;
+- (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)complete;
 
-- (void)relateContext;
-- (instancetype)objectOnBgContext;
-- (instancetype)objectOnMainContext;
+- (instancetype)objectInBgContext;
+- (instancetype)objectInMainContext;
+- (instancetype)objectInContext:(NSManagedObjectContext *)context;
 
-+ (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)block;
+/** 保存BackgroundContext里的数据变化，主线程执行完成回调 */
++ (void)saveWithComplete:(NLCoreDataSaveCompleteBlock)complete;
 
-//在bg线程操作数据，主线程执行完成
-+ (void)performBlock:(void (^)())block complete:(void (^)())complete;
+/** 在BackgroundContext里操作数据，主线程执行完成回调 */
++ (void)performBlock:(void (^)(NSManagedObjectContext *context))block complete:(NLCoreDataSaveCompleteBlock)complete;
 
-//创建一个新的对象和obj对象在同一个Context中
-+ (instancetype)newRelated:(NSManagedObject *)obj;
+/** 创建一个private queue context，然后在该context中保存。一般情况下不要使用这个方法！！！ */
++ (void)saveInPrivateQueueWithBlock:(void(^)(NSManagedObjectContext *localContext))block complete:(NLCoreDataSaveCompleteBlock)complete;
 
-//通过dictionary生成一个临时的object对象但不保存到数据库中
-+ (instancetype)objectWithDictionary:(NSDictionary *)dictionary;
+//TODO：异步执行任务
++ (void)insertObjectsAsync:(NSArray *)array complete:(NLCoreDataFetchCompleteBlock)complete;
++ (void)deleteObjectsAsync:(NSArray *)array complete:(NLCoreDataSaveCompleteBlock)complete;
++ (void)deleteAsyncWithPredicate:(id)predicateOrString complete:(NLCoreDataSaveCompleteBlock)complete;
++ (void)updateAsyncWithPredicate:(id)predicateOrString properties:(NSDictionary *)properties complete:(NLCoreDataSaveCompleteBlock)complete;
++ (void)fetchAllAsyncWithComplete:(NLCoreDataFetchCompleteBlock)complete;
++ (void)fetchAsyncWithPredicate:(id)predicateOrString complete:(NLCoreDataFetchCompleteBlock)complete;
++ (void)fetchAsyncWithPredicate:(id)predicateOrString sortDescriptors:(NSArray *)sortDescriptors complete:(NLCoreDataFetchCompleteBlock)complete;
 
-/***异步执行任务****/
-+ (void)insertObjectsAsync:(NSArray *)array complete:(void (^)(NSArray *objects))complete;
-+ (void)deleteObjectsAsync:(NSArray *)manyObject complete:(void (^)(BOOL success))complete;
-+ (void)fetchAsyncWithPredicate:(id)predicateOrString complete:(void (^)(NSArray *objects))complete;
-+ (void)fetchAsyncWithPredicate:(id)predicateOrString sortDescriptors:(NSArray *)sortDescriptors complete:(void (^)(NSArray *objects))complete;
+//TODO：在主线程中操作
++ (NSUInteger)countInMainWithPredicate:(id)predicateOrString, ...;
++ (instancetype)fetchSingleInMainWithPredicate:(id)predicateOrString, ...;
++ (instancetype)fetchOrInsertSingleInMainWithPredicate:(id)predicateOrString, ...;
++ (NSArray *)fetchInMainWithPredicate:(id)predicateOrString, ...;
++ (NSArray *)fetchInMainWithRequest:(void (^)(NSFetchRequest* request))block;
 
-/***同步执行任务****/
-
-//在主线程中操作
-+ (NSArray *)fetchAllObjects;
-+ (NSArray *)fetchOnMainWithPredicate:(id)predicateOrString, ...;
-+ (NSArray *)fetchOnMainWithRequest:(void (^)(NSFetchRequest* request))block;
-+ (NSUInteger)countOnMainWithPredicate:(id)predicateOrString, ...;
-
-//在子线程中操作
-+ (instancetype)insertObjectWithDictionary:(NSDictionary *)dictionary;
-+ (NSMutableArray *)insertObjectsWithArray:(NSArray *)array;
-+ (void)deleteObjects:(NSArray *)manyObject;
-+ (void)emptyTable;
-
-+ (NSUInteger)countOnBgWithPredicate:(id)predicateOrString, ...;
-+ (NSArray *)fetchOnBgWithPredicate:(id)predicateOrString, ...;
-+ (NSArray *)fetchOnBgWithRequest:(void (^)(NSFetchRequest* request))block;
+//TODO：在子线程中操作
++ (NSUInteger)countInBgWithPredicate:(id)predicateOrString, ...;
++ (instancetype)fetchSingleInBgWithPredicate:(id)predicateOrString, ...;
++ (instancetype)fetchOrInsertSingleInBgWithPredicate:(id)predicateOrString, ...;
++ (NSArray *)fetchInBgWithPredicate:(id)predicateOrString, ...;
++ (NSArray *)fetchInBgWithRequest:(void (^)(NSFetchRequest* request))block;
 
 @end

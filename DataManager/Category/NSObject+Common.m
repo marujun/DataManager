@@ -12,14 +12,17 @@
 
 - (NSString *)stringValue
 {
-    NSString *finalString = @"";
     NSString *_string = [NSString stringWithFormat:@"%@", self];
+    if ([self isMemberOfClass:[NSString class]]) {
+        return _string;
+    }
+    
+    NSString *finalString = @"";
     if (_string && ![_string isEqual:[NSNull null]] && ![_string isEqualToString:@"null"] && ![_string isEqualToString:@"(null)"] && ![_string isEqualToString:@"<null>"]) {
         finalString = [NSString stringWithFormat:@"%@", _string];
     }
     return finalString;
 }
-
 
 //去掉 json 中的多余的 null
 - (id)cleanNull
@@ -36,7 +39,7 @@
     else {
 		jsonObject = self;
 	}
-    
+
 	if ([jsonObject isKindOfClass:[NSArray class]]) {
 		NSMutableArray *array = [jsonObject mutableCopy];
 		for (NSInteger i = array.count - 1; i >= 0; i--) {

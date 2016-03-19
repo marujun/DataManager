@@ -55,30 +55,128 @@
 	[[self managedObjectContext] deleteObject:self];
 }
 
-+ (void)deleteWithRequest:(void (^)(NSFetchRequest* request))block context:(NSManagedObjectContext *)context
++ (BOOL)deleteInContext:(NSManagedObjectContext *)context predicate:(id)predicateOrString, ...
 {
-	NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
-	
-	if (block)
-		block(request);
-	
-	[request setIncludesPropertyValues:NO];
-	
-	NSError* error;
-	NSArray* objects = [context executeFetchRequest:request error:&error];
-
-	for (NSManagedObject* object in objects)
-		[context deleteObject:object];
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self deleteInContext:context batch:NO predicate:predicate];
 }
 
-+ (void)deleteInContext:(NSManagedObjectContext *)context predicate:(id)predicateOrString, ...
++ (BOOL)deleteInContext:(NSManagedObjectContext *)context batch:(BOOL)batch predicate:(id)predicateOrString, ...
 {
-	SET_PREDICATE_WITH_VARIADIC_ARGS
-	[self deleteWithRequest:^(NSFetchRequest *request) {
-		
-		[request setPredicate:predicate];
-		
-	} context:context];
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    return [self deleteWithRequest:^(NSFetchRequest *request) {
+        
+        [request setPredicate:predicate];
+        
+    } batch:batch context:context];
+}
+
++ (BOOL)deleteWithRequest:(void (^)(NSFetchRequest* request))block context:(NSManagedObjectContext *)context
+{
+    return [self deleteWithRequest:block batch:NO context:context];
+}
+
++ (BOOL)deleteWithRequest:(void (^)(NSFetchRequest* request))block batch:(BOOL)batch context:(NSManagedObjectContext *)context
+{
+    NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
+    
+    if (block)
+        block(request);
+    
+    [request setIncludesPropertyValues:NO];
+    
+    NSError* error;
+    NSNumber *deleted_count;
+    
+    @try {
+        if (batch && NSClassFromString(@"NSBatchDeleteRequest")) {
+            NSBatchDeleteRequest *batchRequest = [[NSBatchDeleteRequest alloc] initWithFetchRequest:request];
+            batchRequest.resultType = NSBatchDeleteResultTypeCount;
+            
+            NSError *error = nil;
+            NSBatchDeleteResult *result = [context executeRequest:batchRequest error:&error];
+            deleted_count = result.result;
+            
+            //手动刷新context
+            [context refreshAllObjects];
+        }
+        else {
+            NSArray *objects = [context executeFetchRequest:request error:&error];
+            deleted_count = @(objects.count);
+            
+            for (NSManagedObject* object in objects)
+                [context deleteObject:object];
+        }
+    }
+    @catch (NSException *exception) {
+        error = [NSError errorWithDomain:exception.name code:NSCoreDataError userInfo:exception.userInfo];
+    }
+    
+#ifdef DEBUG
+    NSLog(@"NLCoreData --- %@ %@ objects deleted, error: %@", [self entityName], deleted_count, error);
+#endif
+    
+    return error?NO:YES;
+}
+
++ (BOOL)updateInContext:(NSManagedObjectContext *)context properties:(NSDictionary *)properties predicate:(id)predicateOrString, ...
+{
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    
+    return [self updateInContext:context batch:NO properties:properties predicate:predicate];
+}
+
++ (BOOL)updateInContext:(NSManagedObjectContext *)context batch:(BOOL)batch properties:(NSDictionary *)properties predicate:(id)predicateOrString, ...
+{
+    SET_PREDICATE_WITH_VARIADIC_ARGS
+    
+    NSError* error;
+    NSNumber *updated_count;
+    
+    @try {
+        if (batch && NSClassFromString(@"NSBatchUpdateRequest")) {
+            NSBatchUpdateRequest *batchRequest = [[NSBatchUpdateRequest alloc] initWithEntityName:[self entityName]];
+            batchRequest.predicate = predicate;
+            batchRequest.includesSubentities = NO;
+            batchRequest.resultType = NSUpdatedObjectIDsResultType;
+            batchRequest.propertiesToUpdate = properties;
+            
+            NSError *error = nil;
+            NSBatchUpdateResult *result = [context executeRequest:batchRequest error:&error];
+            NSArray *objectIDs = result.result;
+            updated_count = @(objectIDs.count);
+            
+            //手动刷新context
+            if ([context respondsToSelector:@selector(refreshAllObjects)]) {
+                [context refreshAllObjects];
+            }
+            else {
+                //先是从结果中取到了所有被更新数据的 ID, 再根据这些 ID 获取对应的 NSManagedObject,并使其过期失效,强制更新数据
+                for (NSManagedObjectID *objectID in objectIDs)
+                    [context refreshObject:[context objectWithID:objectID] mergeChanges:NO];
+            }
+        }
+        else {
+            NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
+            [request setIncludesPropertyValues:NO];
+            [request setPredicate:predicate];
+            
+            NSArray *objects = [context executeFetchRequest:request error:&error];
+            updated_count = @(objects.count);
+            
+            for (NSManagedObject* object in objects)
+                [object populateWithDictionary:properties];
+        }
+    }
+    @catch (NSException *exception) {
+        error = [NSError errorWithDomain:exception.name code:NSCoreDataError userInfo:exception.userInfo];
+    }
+
+#ifdef DEBUG
+    NSLog(@"NLCoreData --- %@ %@ objects updated, error: %@", [self entityName], updated_count, error);
+#endif
+    
+    return error?NO:YES;
 }
 
 #pragma mark - Counting
@@ -95,13 +193,21 @@
 
 + (NSUInteger)countWithRequest:(void (^)(NSFetchRequest* request))block context:(NSManagedObjectContext *)context
 {
-	NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
-	
-	if (block)
-		block(request);
-	
 	NSError* error;
-	NSUInteger count = [context countForFetchRequest:request error:&error];
+    NSUInteger count;
+    
+    @try {
+        NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
+        
+        if (block)
+            block(request);
+        
+        count = [context countForFetchRequest:request error:&error];
+    }
+    @catch (NSException *exception) {
+        count = NSNotFound;
+        error = [NSError errorWithDomain:exception.name code:NSCoreDataError userInfo:exception.userInfo];
+    }
 	
 #ifdef DEBUG
 	if (count == NSNotFound)
@@ -119,12 +225,7 @@
 	
 	if (object)
 		return object;
-	
-	object = [context objectWithID:objectID];
-	
-	if (![object isFault])
-		return object;
-	
+    
 	NSError* error;
 	object = [context existingObjectWithID:objectID error:&error];
 	
@@ -133,18 +234,27 @@
 
 + (NSArray *)fetchWithRequest:(void (^)(NSFetchRequest* request))block context:(NSManagedObjectContext *)context
 {
-	NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
-	
-    if (block){
-        block(request);
+    NSError* error;
+    NSArray* objects;
+    NSFetchRequest* request;
+    
+    @try {
+        request = [NSFetchRequest fetchRequestWithEntity:[self class] context:context];
+        
+        if (block){
+            block(request);
+        }
+        
+        objects = [context executeFetchRequest:request error:&error];
     }
-		
-	NSError* error;
-	NSArray* objects = [context executeFetchRequest:request error:&error];
-	
-    if (error) {
-        FLOG(@"fetchWithRequest error: %@",error);
+    @catch (NSException *exception) {
+        objects = @[];
+        error = [NSError errorWithDomain:exception.name code:NSCoreDataError userInfo:exception.userInfo];
     }
+	
+#ifdef DEBUG
+    if (error) NSLog(@"NLCoreData --- %@ fetch request %@ error: %@", [self entityName], request, error);
+#endif
     
 	return objects;
 }
@@ -205,31 +315,28 @@
 	NSManagedObjectContext* bgContext	= [NSManagedObjectContext backgroundContext];
 	
 	[bgContext performBlock:^{
-		
-		NSFetchRequest* bgRequest = [NSFetchRequest fetchRequestWithEntity:[self class] context:bgContext];
-		
-		[bgRequest setResultType:NSManagedObjectIDResultType];
-		[bgRequest setSortDescriptors:nil];
         
-        if (block)
-            block(bgRequest);
-		
-		NSError* bgError	= nil;
-		NSArray* bgObjects	= [bgContext executeFetchRequest:bgRequest error:&bgError];
-		
+		NSArray* bgObjects	= [self fetchWithRequest:^(NSFetchRequest *request) {
+            [request setResultType:NSManagedObjectIDResultType];
+            [request setSortDescriptors:nil];
+            
+            if (block)
+                block(request);
+            
+        } context:bgContext];
+        
 		[mainContext performBlock:^{
 			
-			NSError* error			= nil;
-			NSPredicate* predicate	= [NSPredicate predicateWithFormat:@"SELF IN %@", bgObjects];
-			NSFetchRequest* request	= [NSFetchRequest fetchRequestWithEntity:[self class] context:mainContext];
-			
-			if (block)
-				block(request);
-			
-			[request setPredicate:predicate];
-			
-			NSArray* objects = [mainContext executeFetchRequest:request error:&error];
-			
+			NSArray* objects = [self fetchWithRequest:^(NSFetchRequest *request) {
+                NSPredicate* predicate	= [NSPredicate predicateWithFormat:@"SELF IN %@", bgObjects];
+                
+                if (block)
+                    block(request);
+                
+                [request setPredicate:predicate];
+                
+            } context:mainContext];
+            
 			completion(objects);
 		}];
 	}];
@@ -261,9 +368,6 @@
 	for (id key in arguments) {
 		
 		if (![keys containsObject:key]) {
-#ifdef DEBUG
-			NSLog(@"Populating %@, key not found: %@", NSStringFromClass([self class]), key);
-#endif
 			continue;
 		}
 		

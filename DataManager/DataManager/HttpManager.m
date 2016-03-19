@@ -9,51 +9,6 @@
 #import "HttpManager.h"
 
 @implementation NSString (HttpManager)
-- (NSString *)md5
-{
-    if(self == nil || [self length] == 0){
-        return nil;
-    }
-    const char *value = [self UTF8String];
-    
-    unsigned char outputBuffer[CC_MD5_DIGEST_LENGTH];
-    CC_MD5(value, (CC_LONG)strlen(value), outputBuffer);
-    
-    NSMutableString *outputString = [[NSMutableString alloc] initWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
-    for(NSInteger count = 0; count < CC_MD5_DIGEST_LENGTH; count++){
-        [outputString appendFormat:@"%02x",outputBuffer[count]];
-    }
-    
-    return outputString;
-}
-- (NSString *)sha1
-{
-    const char *ptr = [self UTF8String];
-    
-    int i =0;
-    size_t len = strlen(ptr);
-    Byte byteArray[len];
-    while (i!=len)
-    {
-        unsigned eachChar = *(ptr + i);
-        unsigned low8Bits = eachChar & 0xFF;
-        
-        byteArray[i] = low8Bits;
-        i++;
-    }
-    
-    unsigned char digest[CC_SHA1_DIGEST_LENGTH];
-    
-    CC_SHA1(byteArray, (CC_LONG)len, digest);
-    
-    NSMutableString *hex = [NSMutableString string];
-    for (int i=0; i<20; i++)
-        [hex appendFormat:@"%02x", digest[i]];
-    
-    NSString *immutableHex = [NSString stringWithString:hex];
-    
-    return immutableHex;
-}
 - (NSString *)encode
 {
     NSString *outputStr = (NSString *)
@@ -79,7 +34,7 @@
 {
     id object = nil;
     @try {
-        NSData *data = [self dataUsingEncoding:NSUTF8StringEncoding];;
+        NSData *data = [self dataUsingEncoding:NSUTF8StringEncoding];
         object = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
     }
     @catch (NSException *exception) {
@@ -118,11 +73,12 @@
 }
 @end
 
+@implementation HttpResponse
+
+@end
 
 @interface HttpManager ()
-{
-    NSDictionary *errCodeDic;
-}
+
 @end
 
 @implementation HttpManager
@@ -135,11 +91,13 @@
         _operationManager = [[AFHTTPRequestOperationManager alloc] initWithBaseURL:baseURL];
         _operationManager.responseSerializer.acceptableContentTypes = nil;
         
+//        _operationManager.securityPolicy.allowInvalidCertificates = YES; //是否允许无效证书（也就是自建的证书），默认为NO
+//        _operationManager.securityPolicy.validatesDomainName = NO; //是否需要验证域名，默认为YES； 假如证书的域名与你请求的域名不一致，需把该项设置为NO
+        
         [_operationManager.reachabilityManager setReachabilityStatusChangeBlock:^(AFNetworkReachabilityStatus status) {
             FLOG(@"AFNetworkReachabilityStatus: %@", AFStringFromNetworkReachabilityStatus(status));
         }];
         [_operationManager.reachabilityManager startMonitoring];
-        
         
         NSURLCache *urlCache = [NSURLCache sharedURLCache];
         [urlCache setMemoryCapacity:50*1024*1024];  /* 设置内存缓存的大小为50M*/
@@ -164,36 +122,49 @@
     return defaultHttpManager;
 }
 
-- (AFHTTPRequestOperation *)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete
+- (AFHTTPRequestOperation *)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     return [self requestToUrl:url method:@"GET" useCache:NO params:params complete:complete];
 }
 
-- (AFHTTPRequestOperation *)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete
+- (AFHTTPRequestOperation *)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     return [self requestToUrl:url method:@"GET" useCache:YES params:params complete:complete];
 }
 
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete
+- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     return [self requestToUrl:url method:@"POST" useCache:NO params:params complete:complete];
+}
+
+- (AFHTTPRequestOperation *)postCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete
+{
+    return [self requestToUrl:url method:@"POST" useCache:YES params:params complete:complete];
 }
 
 - (NSMutableURLRequest *)requestWithUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache params:(NSDictionary *)params
 {
     NSMutableDictionary *requestParams = [params mutableCopy];
-    BOOL needVerify = [self isNeedVerifyForUrl:url];
+    BOOL needVerify = [[self class] isNeedVerifyForUrl:url];
     if(needVerify){
         if (!requestParams || !requestParams[@"isCacheRequest"]) {
             requestParams = [HttpManager getRequestBodyWithParams:params];
         }
+        
+#ifdef DEBUG
+#else
+        if (!requestParams[@"isCacheRequest"] && ![MCLog defaultManager].is_debug) method = @"POST";
+#endif
         [requestParams removeObjectForKey:@"isCacheRequest"];
     }
     
+    NSString *lastUrl = [[self class] getRequestUrlWithUrl:url];
+    
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
-    NSMutableURLRequest *request = [serializer requestWithMethod:method URLString:url parameters:requestParams error:nil];
-    request.accessibilityValue = [@([[NSDate date] timeIntervalSince1970]) stringValue];
-
+    NSMutableURLRequest *request = [serializer requestWithMethod:method URLString:lastUrl parameters:requestParams error:nil];
+    request.accessibilityValue = [requestParams json];
+    request.accessibilityHint = [@([[NSDate date] timeIntervalSince1970]) stringValue];
+    
     [request setTimeoutInterval:20];
     if (useCache) {
         [request setCachePolicy:NSURLRequestReturnCacheDataElseLoad];
@@ -202,12 +173,6 @@
         [self setCookieForRequest:request];
     }
     return request;
-}
-
-- (BOOL)isNeedVerifyForUrl:(NSString *)url
-{
-    //这在填写是否需要添加验证信息
-    return false;
 }
 
 //在HTTPHeaderField里返回cookies
@@ -223,17 +188,42 @@
 {
     NSMutableDictionary *cacheParams = [HttpManager getRequestBodyWithParams:params];
     [cacheParams removeObjectForKey:@"time"];
-    [cacheParams removeObjectForKey:@"skey"];
-    [cacheParams removeObjectForKey:@"key"];
     [cacheParams removeObjectForKey:@"lat"];
     [cacheParams removeObjectForKey:@"lng"];
-    [cacheParams setObject:@(true) forKey:@"isCacheRequest"];
+    [cacheParams setObject:@(YES) forKey:@"isCacheRequest"];
+    
     return [self requestWithUrl:url method:method useCache:useCache params:cacheParams];
 }
 
-- (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete
+- (void)dictionaryWithData:(id)data handleEmoji:(BOOL)handleEmoji complete:(void (^)(NSDictionary *object))complete
 {
-    NSURLRequest *cacheRequest = [self cacheRequestUrl:url method:@"GET" useCache:true params:params];
+    __block NSDictionary *object = data;
+
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSDate *date = [NSDate date];
+        if ([data isKindOfClass:[NSData class]]) {
+            object = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+        }
+        if ([data isKindOfClass:[NSString class]]) {
+            object = [data object];
+        }
+        object = [object cleanNull];
+        
+        if(handleEmoji){
+            object = [[[object json] stringByReplacingEmojiCheatCodesWithUnicode] object];
+            NSLog(@"解析网络数据耗时 %.4f 秒",[[NSDate date] timeIntervalSinceDate:date]);
+        }
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            complete ? complete(object?:data) : nil;
+        });
+    });
+}
+
+- (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete
+{
+    NSURLRequest *cacheRequest = [self cacheRequestUrl:url method:@"GET" useCache:YES params:params];
+    
     NSCachedURLResponse *cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:cacheRequest];
     if (cachedResponse != nil && [[cachedResponse data] length] > 0) {
         id object = cachedResponse.data;
@@ -243,63 +233,162 @@
         if ([object isKindOfClass:[NSString class]]) {
             object = [object object];
         }
-        [self handleResponse:object isCache:true complete:complete];
+        
+        HttpResponse *resObj = [[HttpResponse alloc] init];
+        resObj.request_url = cacheRequest.URL;
+        resObj.request_params = params;
+        resObj.payload = object;
+        resObj.is_cache = YES;
+        [self handleResponse:resObj complete:complete];
         
     } else {
-        complete ? complete(false, nil) : nil;
+        HttpResponse *resObj = [[HttpResponse alloc] init];
+        resObj.request_url = cacheRequest.URL;
+        resObj.request_params = params;
+        resObj.is_cache = YES;
+        resObj.error = [NSError errorWithDomain:NSURLErrorDomain
+                                           code:NSURLErrorResourceUnavailable
+                                       userInfo:@{NSLocalizedDescriptionKey:@"缓存数据不存在"}];
+        complete ? complete(NO, resObj) : nil;
     }
 }
 
-- (void)handleResponse:(NSDictionary *)response isCache:(BOOL)isCache complete:(void (^)(BOOL successed, id result))complete
+- (void)updateLocalCacheToUrl:(NSString *)url params:(NSDictionary *)params keyPath:(NSString *)keyPath value:(id)value
 {
+    if (!keyPath) return;
+    
+    keyPath =  [@"p." stringByAppendingString:keyPath];
+    NSURLRequest *cacheRequest = [self cacheRequestUrl:url method:@"GET" useCache:YES params:params];
+    
+    NSCachedURLResponse *cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:cacheRequest];
+    if (cachedResponse != nil && [[cachedResponse data] length] > 0) {
+        id object = cachedResponse.data;
+        if ([object isKindOfClass:[NSData class]]) {
+            object = [NSJSONSerialization JSONObjectWithData:object options:NSJSONReadingMutableLeaves error:nil];
+        }
+        
+        if ([object isKindOfClass:[NSString class]]) {
+            object = [object object];
+        }
+        
+        if (object) {
+            NSDictionary *newdata = [object dictionaryByReplaceingValue:value forKeyPath:keyPath];
+            
+            //store in cache
+            NSData *data = [[newdata json] dataUsingEncoding:NSUTF8StringEncoding];
+            
+            NSCachedURLResponse *cachedURLResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:cacheRequest];
+            cachedURLResponse = [[NSCachedURLResponse alloc] initWithResponse:cachedResponse.response data:data userInfo:nil storagePolicy:NSURLCacheStorageAllowed];
+            [[NSURLCache sharedURLCache] storeCachedResponse:cachedURLResponse forRequest:cacheRequest];
+        }
+    }
+}
+
+- (void)handleResponse:(HttpResponse *)resObj complete:(void (^)(BOOL successed, HttpResponse *response))complete
+{
+    NSDictionary *response = resObj.payload;
     if (![response isKindOfClass:[NSDictionary class]]) {
-        complete ? complete(false, @{}) : nil;
+        resObj.payload = nil;
+        resObj.error = [NSError errorWithDomain:NSURLErrorDomain
+                                           code:NSURLErrorCannotDecodeContentData
+                                       userInfo:@{NSLocalizedDescriptionKey:@"返回的数据格式不正确"}];
+        complete ? complete(NO, resObj) : nil;
         return;
     }
-    if (response[@"result"]) {
-        if ([response[@"result"] intValue] == 1) {
+    
+    if (response[@"c"]) {
+        resObj.hint = response[@"h"];
+        
+        if (response[@"ts"] && !resObj.is_cache) {
+            @try {
+                double systime = [response[@"ts"] doubleValue];
+                resObj.date = [NSDate dateWithTimeStamp:systime];
+            }
+            @catch (NSException *exception) {}
+        }
+        
+        int httpCode = [response[@"c"] intValue];
+        
+        if (httpCode == 200) {
             if (complete) {
-                if (response[@"data"]) {
-                    complete(true, response[@"data"]);
+                if (response[@"p"] && [response[@"p"] isKindOfClass:[NSDictionary class]]) {
+                    resObj.payload = response[@"p"];
                 } else {
-                    complete(true, response);
+                    resObj.payload = @{};
                 }
+                complete(YES, resObj);
             }
         }
-        else if(isCache){
-            complete ? complete(false, response) : nil;
+        else if(resObj.is_cache){
+            resObj.error = [NSError errorWithDomain:NSURLErrorDomain
+                                               code:httpCode
+                                           userInfo:@{NSLocalizedDescriptionKey:response[@"m"]}];
+            complete ? complete(NO, resObj) : nil;
         }
-        else{
-            complete ? complete(false, response) : nil;
-            
-            //在这处理错误信息
+        else {
+            resObj.error = [NSError errorWithDomain:NSURLErrorDomain
+                                               code:httpCode
+                                           userInfo:@{NSLocalizedDescriptionKey:response[@"m"]}];
+            complete ? complete(NO, resObj) : nil;
         }
+        
     } else {
-        complete ? complete(true, response) : nil;
+        complete ? complete(YES, resObj) : nil;
+    }
+}
+
+- (void)handleHttpResponseError:(NSError *)error useCache:(BOOL)useCache
+{
+    if (!useCache && error.code != NSURLErrorCancelled) {
+        switch (error.code) {
+            case kCFURLErrorTimedOut:
+                NSLog(@"您的网络不给力哦~");
+                break;
+            default:
+                NSLog(@"网络服务不给力哦~");
+                break;
+        }
     }
 }
 
 - (AFHTTPRequestOperation *)requestToUrl:(NSString *)url method:(NSString *)method useCache:(BOOL)useCache
-              params:(NSDictionary *)params complete:(void (^)(BOOL successed, id result))complete
+              params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     NSMutableURLRequest *request = [self requestWithUrl:url method:method useCache:useCache params:params];
-
+    
+    AFHTTPRequestOperation *operation = nil;
+    
     void (^requestSuccessBlock)(AFHTTPRequestOperation *operation, id responseObject) = ^(AFHTTPRequestOperation *operation, id responseObject) {
-        [self logWithOperation:operation method:method params:params];
+        [self logWithOperation:operation method:request.HTTPMethod params:params];
         
-        [self handleResponse:responseObject isCache:false complete:complete];
+        //已在cache中完成自带表情的解析
+        [self dictionaryWithData:responseObject handleEmoji:!useCache complete:^(NSDictionary *object) {
+            HttpResponse *resObj = [[HttpResponse alloc] init];
+            resObj.request_url = operation.request.URL;
+            resObj.request_params = [request.accessibilityValue object]?:params;
+            resObj.payload = object;
+            resObj.error = operation.error;
+            resObj.is_cache = resObj.error!=nil;
+            
+            [self handleResponse:resObj complete:complete];
+        }];
     };
     void (^requestFailureBlock)(AFHTTPRequestOperation *operation, NSError *error) = ^(AFHTTPRequestOperation *operation, NSError *error) {
         [self logWithOperation:operation method:method params:params];
-        complete ? complete(false,nil) : nil;
+        
+        HttpResponse *resObj = [[HttpResponse alloc] init];
+        resObj.request_url = operation.request.URL;
+        resObj.request_params = [request.accessibilityValue object]?:params;
+        resObj.error = operation.error;
+        complete ? complete(NO,nil) : nil;
+        
+        [self handleHttpResponseError:error useCache:useCache];
     };
     
-    
-    AFHTTPRequestOperation *operation = nil;
     if (useCache) {
-        NSURLRequest *cacheRequest = [self cacheRequestUrl:url method:method useCache:useCache params:params];
+        NSURLRequest *cacheRequest = [self cacheRequestUrl:url method:@"GET" useCache:useCache params:params];
         operation = [self cacheOperationWithRequest:request cacheRequest:cacheRequest success:requestSuccessBlock failure:requestFailureBlock];
-    }else{
+    } else {
         operation = [_operationManager HTTPRequestOperationWithRequest:request success:requestSuccessBlock failure:requestFailureBlock];
     }
     [_operationManager.operationQueue addOperation:operation];
@@ -315,13 +404,15 @@
     AFHTTPRequestOperation *operation = [_operationManager HTTPRequestOperationWithRequest:urlRequest success:^(AFHTTPRequestOperation *operation, id responseObject){
         
         //store in cache
-        NSData *data = [[responseObject json] dataUsingEncoding:NSUTF8StringEncoding];
-        
-        NSCachedURLResponse *cachedURLResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:cacheRequest];
-        cachedURLResponse = [[NSCachedURLResponse alloc] initWithResponse:operation.response data:data userInfo:nil storagePolicy:NSURLCacheStorageAllowed];
-        [[NSURLCache sharedURLCache] storeCachedResponse:cachedURLResponse forRequest:cacheRequest];
-        
-        success(operation,responseObject);
+        [self dictionaryWithData:operation.responseData handleEmoji:YES complete:^(NSDictionary *object) {
+            NSData *data = [[object json] dataUsingEncoding:NSUTF8StringEncoding];
+            
+            NSCachedURLResponse *cachedURLResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:cacheRequest];
+            cachedURLResponse = [[NSCachedURLResponse alloc] initWithResponse:operation.response data:data userInfo:nil storagePolicy:NSURLCacheStorageAllowed];
+            [[NSURLCache sharedURLCache] storeCachedResponse:cachedURLResponse forRequest:cacheRequest];
+            
+            success(operation,object);
+        }];
         
     }failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         
@@ -347,23 +438,23 @@
     if (operation.error) {
         
         if ([[method uppercaseString] isEqualToString:@"GET"]) {
-            FLOG(@"get request url:  %@  ",[operation.request.URL.absoluteString decode]);
+            NSLog(@"get request url:  %@  ",[operation.request.URL.absoluteString decode]);
         }else{
-            FLOG(@"%@ request url:  %@  \npost params:  %@\n",[method lowercaseString],[operation.request.URL.absoluteString decode],params);
+            NSLog(@"%@ request url:  %@  \npost params:  %@\n",[method lowercaseString],[operation.request.URL.absoluteString decode],[operation.request.accessibilityValue object]);
         }
         
-        FLOG(@"%@ responseObject:  %@",[method lowercaseString],response);
-        FLOG(@"%@ error :  %@",[method lowercaseString],operation.error);
+        NSLog(@"%@ responseObject:  %@",[method lowercaseString],response);
+        NSLog(@"%@ error :  %@",[method lowercaseString],operation.error);
     }
     else{
         
         if ([[method uppercaseString] isEqualToString:@"GET"]) {
-            FLOG(@"get request url:  %@  ",[operation.request.URL.absoluteString decode]);
+            NSLog(@"get request url:  %@  ",[operation.request.URL.absoluteString decode]);
         }else{
-            FLOG(@"%@ request url:  %@  \npost params:  %@\n",[method lowercaseString],[operation.request.URL.absoluteString decode],params);
+            NSLog(@"%@ request url:  %@  \npost params:  %@\n",[method lowercaseString],[operation.request.URL.absoluteString decode],[operation.request.accessibilityValue object]);
         }
         
-        FLOG(@"%@ responseObject:  %@",[method lowercaseString],response);
+        NSLog(@"%@ responseObject:  %@",[method lowercaseString],response);
 
         [self takesTimeWithRequest:operation.request flag:@"接口"];
     }
@@ -372,10 +463,10 @@
 //打印每个接口的响应时间
 - (void)takesTimeWithRequest:(NSURLRequest *)request flag:(NSString *)flag
 {
-    if (request && request.accessibilityValue) {
+    if (request && request.accessibilityHint) {
         NSURL *url = request.URL;
         
-        double beginTime = [request.accessibilityValue doubleValue];
+        double beginTime = [request.accessibilityHint doubleValue];
         double localTime = [[NSDate date] timeIntervalSince1970];
         
         FLOG(@"%@: %@    耗时：%.3f秒",flag,url.interface,localTime-beginTime);
@@ -385,7 +476,7 @@
 - (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
-                               complete:(void (^)(BOOL successed, id result))complete
+                               complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     return [self uploadToUrl:url params:params files:files process:nil complete:complete];
 }
@@ -394,16 +485,17 @@
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
                                 process:(void (^)(long writedBytes, long totalBytes))process
-                               complete:(void (^)(BOOL successed, id result))complete
+                               complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
-    if([self isNeedVerifyForUrl:url]){
+    NSString *lastUrl = [[self class] getRequestUrlWithUrl:url];
+    if([[self class] isNeedVerifyForUrl:url]){
         params = [[HttpManager getRequestBodyWithParams:params] copy];
     }
-    FLOG(@"post request url:  %@  \npost params:  %@",url,params);
+    NSLog(@"post request url:  %@  \npost params:  %@",lastUrl,params);
     
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     
-    NSMutableURLRequest *request = [serializer multipartFormRequestWithMethod:@"POST" URLString:url parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+    NSMutableURLRequest *request = [serializer multipartFormRequestWithMethod:@"POST" URLString:lastUrl parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
         for (NSDictionary *fileItem in files) {
             id value = [fileItem objectForKey:@"file"];        //支持四种数据类型：NSData、UIImage、NSURL、NSString
             NSString *name = [fileItem objectForKey:@"key"];            //文件字段的key
@@ -415,11 +507,9 @@
             if ([value isKindOfClass:[NSData class]]) {
                 [formData appendPartWithFileData:value name:name fileName:fileName mimeType:mimeType];
             }else if ([value isKindOfClass:[UIImage class]]) {
-//                if (UIImagePNGRepresentation(value)) {  //返回为png图像。
-//                    [formData appendPartWithFileData:UIImagePNGRepresentation(value) name:name fileName:fileName mimeType:mimeType];
-//                }else {   //返回为JPEG图像。
-                    [formData appendPartWithFileData:UIImageJPEGRepresentation(value, 0.5) name:name fileName:fileName mimeType:mimeType];
-//                }
+                //转换为JPEG图片并把质量下降0.5
+                NSData *data = UIImageJPEGRepresentation(value, 0.5);
+                [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
             }else if ([value isKindOfClass:[NSURL class]]) {
                 [formData appendPartWithFileURL:value name:name fileName:fileName mimeType:mimeType error:nil];
             }else if ([value isKindOfClass:[NSString class]]) {
@@ -434,25 +524,39 @@
     operation = [_operationManager HTTPRequestOperationWithRequest:request
                                                           success:^(AFHTTPRequestOperation *operation, id responseObject) {
                                                               id response = [operation.responseString object]?:operation.responseString;
-                                                              FLOG(@"post responseObject:  %@",response);
+                                                              NSLog(@"post responseObject:  %@",response);
                                                               
                                                               [self takesTimeWithRequest:operation.request flag:@"上传"];
                                                               if (complete) {
-                                                                  [self handleResponse:responseObject isCache:false complete:complete];
+                                                                  [self dictionaryWithData:responseObject handleEmoji:YES complete:^(NSDictionary *object) {
+                                                                      HttpResponse *resObj = [[HttpResponse alloc] init];
+                                                                      resObj.request_url = operation.request.URL;
+                                                                      resObj.request_params = params;
+                                                                      resObj.payload = object;
+                                                                      
+                                                                      [self handleResponse:resObj complete:complete];
+                                                                  }];
                                                               }
                                                           } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                                                              FLOG(@"post request url:  %@  \npost params:  %@",url,params);
-                                                              FLOG(@"post responseObject:  %@",operation.responseString);
-                                                              FLOG(@"post error :  %@",error);
+                                                              NSLog(@"post request url:  %@  \npost params:  %@",lastUrl,params);
+                                                              NSLog(@"post responseObject:  %@",operation.responseString);
+                                                              NSLog(@"post error :  %@",error);
                                                               
+//                                                              [KeyWindow showAlertMessage:@"网络连接失败" callback:nil];
                                                               if (complete) {
-                                                                  complete(false,nil);
+                                                                  HttpResponse *resObj = [[HttpResponse alloc] init];
+                                                                  resObj.request_url = operation.request.URL;
+                                                                  resObj.request_params = params;
+                                                                  resObj.error = error;
+                                                                  complete(NO,resObj);
                                                               }
+                                                              
+                                                              [self handleHttpResponseError:error useCache:NO];
                                                           }];
     
     [operation setUploadProgressBlock:^(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite) {
         float progress = (float)totalBytesWritten / totalBytesExpectedToWrite;
-        FLOG(@"upload process: %.0f%% (%@/%@)",100*progress,@(totalBytesWritten),@(totalBytesExpectedToWrite));
+        NSLog(@"upload process: %.0f%% (%@/%@)",100*progress,@(totalBytesWritten),@(totalBytesExpectedToWrite));
         if (process) {
             process((long)totalBytesWritten,(long)totalBytesExpectedToWrite);
         }
@@ -464,7 +568,7 @@
 
 - (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
                                    filePath:(NSString *)filePath
-                                   complete:(void (^)(BOOL successed, id result))complete
+                                   complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     return [self downloadFromUrl:url params:nil filePath:filePath process:nil complete:complete];
 }
@@ -473,12 +577,12 @@
                                      params:(NSDictionary *)params
                                    filePath:(NSString *)filePath
                                     process:(void (^)(long readBytes, long totalBytes))process
-                                   complete:(void (^)(BOOL successed, id result))complete
+                                   complete:(void (^)(BOOL successed, HttpResponse *response))complete
 {
     AFHTTPRequestSerializer *serializer = [AFHTTPRequestSerializer serializer];
     NSMutableURLRequest *request = [serializer requestWithMethod:@"GET" URLString:url parameters:params error:nil];
     request.accessibilityValue = [@([[NSDate date] timeIntervalSince1970]) stringValue];
-    FLOG(@"get request url: %@",[request.URL.absoluteString decode]);
+    NSLog(@"get request url: %@",[request.URL.absoluteString decode]);
     
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
     operation.responseSerializer.acceptableContentTypes = nil;
@@ -489,6 +593,7 @@
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
         NSArray *mimeTypeArray = @[@"text/html", @"application/json"];
         NSError *moveError = nil;
+        
         if ([mimeTypeArray containsObject:operation.response.MIMEType]) {
             //返回的是json格式数据
             NSString *string = [NSString stringWithContentsOfFile:tmpPath encoding:NSUTF8StringEncoding error:nil];
@@ -498,30 +603,42 @@
             }
             
             [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
-            FLOG(@"get responseObject:  %@",responseObject);
+            NSLog(@"get responseObject:  %@",responseObject);
         }
-        else{
+        else {
             [self takesTimeWithRequest:operation.request flag:@"下载"];
             
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
             [[NSFileManager defaultManager] moveItemAtPath:tmpPath toPath:filePath error:&moveError];
         }
         
+        HttpResponse *resObj = [[HttpResponse alloc] init];
+        resObj.request_url = operation.request.URL;
+        resObj.request_params = params;
+        resObj.payload = responseObject;
+        
         if (complete && !moveError) {
-            complete(true,responseObject);
-        }else{
-            complete?complete(false,responseObject):nil;
+            complete(YES,resObj);
+        } else {
+            resObj.error = [NSError errorWithDomain:NSURLErrorDomain
+                                               code:NSURLErrorResourceUnavailable
+                                           userInfo:@{NSLocalizedDescriptionKey:@"移动文件失败"}];
+            complete?complete(NO,resObj):nil;
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
 //        FLOG(@"get error :  %@",error);
         [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:nil];
         if (complete) {
-            complete(false,nil);
+            HttpResponse *resObj = [[HttpResponse alloc] init];
+            resObj.request_url = operation.request.URL;
+            resObj.request_params = params;
+            resObj.error = error;
+            complete(NO,resObj);
         }
     }];
     [operation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
         float progress = (float)totalBytesRead / totalBytesExpectedToRead;
-        FLOG(@"download process: %.0f%% (%ld/%ld)",100*progress,(long)totalBytesRead,(long)totalBytesExpectedToRead);
+        NSLog(@"download process: %.0f%% (%ld/%ld)",100*progress,(long)totalBytesRead,(long)totalBytesExpectedToRead);
         if (process) {
             process((NSUInteger)totalBytesRead,(NSUInteger)totalBytesExpectedToRead);
         }
@@ -532,29 +649,57 @@
     return operation;
 }
 
++ (BOOL)isNeedVerifyForUrl:(NSString *)url
+{
+    return NO;
+}
+
++ (NSString *)getRequestUrlWithUrl:(NSString *)url
+{
+    BOOL needVerify = [self isNeedVerifyForUrl:url];
+    if(needVerify){
+        if ([url rangeOfString:@"device_id"].length) {
+            return url;
+        }
+        
+//        NSString *lastUrl = [url stringByAppendingFormat:@"?device_id=%@",[OpenUDID value]];
+//        if (_loginUser && _loginUser.uid) {
+//            lastUrl = [lastUrl stringByAppendingFormat:@"&login_uid=%@",_loginUser.uid];
+//        }
+//        
+//        return url;
+    }
+    
+    return url;
+}
+
 + (NSMutableDictionary *)getRequestBodyWithParams:(NSDictionary *)params
 {
-    NSMutableDictionary *requestBody = [params?:@{} mutableCopy];
-
-    NSString *versionCode = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-    [requestBody setObject:@([[NSDate date] timeIntervalSince1970]*1000) forKey:@"time"];
-    [requestBody setObject:@"iOS" forKey:@"platform"];
-    [requestBody setObject:versionCode forKey:@"version"];
+    params = [[[params json] stringByReplacingEmojiUnicodeWithCheatCodes] object];
     
-    NSSortDescriptor *sortDescriptor = [NSSortDescriptor sortDescriptorWithKey:@"description"
-                                                                     ascending:YES
-                                                                      selector:@selector(compare:)];
-    NSMutableString *paramString = [NSMutableString string];
-    for (NSString *key in [requestBody.allKeys sortedArrayUsingDescriptors:@[sortDescriptor]]){
-        id value = [requestBody objectForKey:key];
-        [paramString appendFormat:@"%@=%@", key, value];
-    }
-    [paramString appendString:@"_!QA@WS#"];
-
-    NSString *key = [paramString md5];
-    [requestBody setObject:key forKey:@"key"];
+    NSMutableDictionary *requestBody = params?[params mutableCopy]:[[NSMutableDictionary alloc] init];
+    
+//    double difference = [[userDefaults objectForKey:UserDefaultKey_TimeDifference] doubleValue];
+//    double localTime = [[NSDate date] timeIntervalSince1970]*1000;
+//    NSString *systime = [NSString stringWithFormat:@"%.0f",(localTime+difference)];
+//    
+//    [requestBody setObject:systime forKey:@"time"];
+    [requestBody setObject:@"0" forKey:@"platform"];               //0-iOS 1-Android
+    [requestBody setObject:XcodeBundleVersion forKey:@"version"];
+    [requestBody setObject:@"app_store" forKey:@"distributor"];
+    
+    //TODO: 已放在链接地址里，详见方法：getRequestUrlWithUrl
+//    [requestBody setObject:[OpenUDID value] forKey:@"device_id"];
+//    if (_loginUser.uid && _loginUser.uid.length) {
+//        [requestBody setObject:_loginUser.uid forKey:@"login_uid"];
+//    }
+    
+//    if (_loginUser.session_key && _loginUser.session_key.length) {
+//        [requestBody setObject:_loginUser.session_key forKey:@"session_key"];
+//    }
     
     return requestBody;
 }
+
 
 @end

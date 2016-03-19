@@ -8,7 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
-#define KeyboardAnimationCurve  (IS_IOS_6?0:7) << 16
+#define KeyboardAnimationCurve  7 << 16
 #define KeyboardAnimationDuration  0.25
 
 @interface BlurView : UIView
@@ -19,9 +19,6 @@
 @end
 
 @interface UIView (Common)
-
-//移除所有的子视图
-- (void)removeAllSubview;
 
 - (UIView *)findFirstResponder;
 
@@ -44,5 +41,8 @@
 //注意： 必须使用weakSelf : __weak typeof(self) weakSelf = self;
 - (void)setTapActionWithBlock:(void (^)(void))block;
 
+- (void)setPanActionWithBlock:(void (^)(void))block;
+
 - (void) sizeLayoutToFit;
+
 @end

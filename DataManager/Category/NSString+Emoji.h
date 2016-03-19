@@ -43,4 +43,12 @@
  */
 - (NSString *)stringByReplacingEmojiUnicodeWithCheatCodes;
 
+
+/** 是否含有系统表情 */
+- (BOOL)isContainEmoji;
+
+/** 过滤表情之后的字符串 */
+- (NSString *)stringByDeletingEmoji;
+
+
 @end
