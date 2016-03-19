@@ -6,6 +6,9 @@
 //  Copyright © 2016年 MaRuJun. All rights reserved.
 //
 
+#import "AuthData.h"
+#import "ApplicationContext.h"
+
 #ifndef MacroToolHeader_h
 #define MacroToolHeader_h
 

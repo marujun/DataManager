@@ -26,3 +26,4 @@
 
 #import "HttpManager.h"
 #import "ImageCache.h"
+#import "USViewController.h"
