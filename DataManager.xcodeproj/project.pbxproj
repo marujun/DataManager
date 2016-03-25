@@ -52,6 +52,7 @@
 		0ADF3D571C9D24DD000E77EC /* DBLoginUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 0ADF3D561C9D24DD000E77EC /* DBLoginUser.m */; };
 		0ADF3D591C9D27A1000E77EC /* pub_nav_white_back@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0ADF3D581C9D27A1000E77EC /* pub_nav_white_back@2x.png */; };
 		0ADF3D5C1C9D28F0000E77EC /* AuthData.m in Sources */ = {isa = PBXBuildFile; fileRef = 0ADF3D5B1C9D28F0000E77EC /* AuthData.m */; };
+		0AE60FED1CA52F3F003B9B7A /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AE60FEC1CA52F3F003B9B7A /* Photos.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		0AEAE9491891553F0055EADB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE9481891553F0055EADB /* Foundation.framework */; };
 		0AEAE94B1891553F0055EADB /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE94A1891553F0055EADB /* CoreGraphics.framework */; };
 		0AEAE94D1891553F0055EADB /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEAE94C1891553F0055EADB /* UIKit.framework */; };
@@ -177,6 +178,7 @@
 		0ADF3D581C9D27A1000E77EC /* pub_nav_white_back@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "pub_nav_white_back@2x.png"; sourceTree = "<group>"; };
 		0ADF3D5A1C9D28F0000E77EC /* AuthData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AuthData.h; sourceTree = "<group>"; };
 		0ADF3D5B1C9D28F0000E77EC /* AuthData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AuthData.m; sourceTree = "<group>"; };
+		0AE60FEC1CA52F3F003B9B7A /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		0AEAE9451891553F0055EADB /* DataManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DataManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0AEAE9481891553F0055EADB /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		0AEAE94A1891553F0055EADB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -210,6 +212,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0AE60FED1CA52F3F003B9B7A /* Photos.framework in Frameworks */,
 				0AEAE9C5189155ED0055EADB /* CoreData.framework in Frameworks */,
 				0AEAE9C3189155E40055EADB /* SystemConfiguration.framework in Frameworks */,
 				0AEAE9C1189155DA0055EADB /* CFNetwork.framework in Frameworks */,
@@ -407,6 +410,7 @@
 		0AEAE9471891553F0055EADB /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				0AE60FEC1CA52F3F003B9B7A /* Photos.framework */,
 				0AEAE9C4189155ED0055EADB /* CoreData.framework */,
 				0AEAE9C2189155E40055EADB /* SystemConfiguration.framework */,
 				0AEAE9C0189155DA0055EADB /* CFNetwork.framework */,
