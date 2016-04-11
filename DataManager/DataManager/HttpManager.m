@@ -380,7 +380,7 @@
         resObj.request_url = operation.request.URL;
         resObj.request_params = [request.accessibilityValue object]?:params;
         resObj.error = operation.error;
-        complete ? complete(NO,nil) : nil;
+        complete ? complete(NO,resObj) : nil;
         
         [self handleHttpResponseError:error useCache:useCache];
     };
