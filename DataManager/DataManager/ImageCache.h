@@ -18,7 +18,7 @@ static char kProperty##PROPERTY_NAME; \
 return ( PROPERTY_TYPE ) objc_getAssociatedObject(self, &(kProperty##PROPERTY_NAME ) ); \
 } \
 - (void) SETTER_NAME :( PROPERTY_TYPE ) PROPERTY_NAME{ \
-objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_ASSOCIATION_RETAIN); \
+objc_setAssociatedObject(self, &kProperty##PROPERTY_NAME , PROPERTY_NAME , OBJC_ASSOCIATION_RETAIN_NONATOMIC); \
 } \
 
 #define dispatch_main_sync_safe(block)\
@@ -57,7 +57,7 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 
 + (void)dataWithURL:(NSString *)url
            identify:(NSString *)identify
-            process:(void (^)(long readBytes, long totalBytes))process
+            process:(void (^)(int64_t readBytes, int64_t totalBytes))process
            callback:(void(^)(NSData *data))callback;
 
 /** 通过URL获取缓存文件在本地对应的路径 */
@@ -91,7 +91,7 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 
 + (void)imageWithURL:(NSString *)url
             identify:(NSString *)identify
-             process:(void (^)(long readBytes, long totalBytes))process
+             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
             callback:(void(^)(UIImage *image))callback;
 
 /** 通过URL获取缓存图片在本地对应的路径 */
@@ -168,7 +168,7 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 @interface ImageCacheManager : NSObject
 
 @property (strong, nonatomic, readonly) NSString *downloadingUrl;
-@property (strong, nonatomic, readonly) AFHTTPRequestOperation *requestOperation;
+@property (strong, nonatomic, readonly) NSURLSessionDownloadTask *requestOperation;
 
 + (instancetype)defaultManager;
 

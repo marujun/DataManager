@@ -53,7 +53,7 @@ ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 
 + (void)dataWithURL:(NSString *)url
            identify:(NSString *)identify
-            process:(void (^)(long readBytes, long totalBytes))process
+            process:(void (^)(int64_t readBytes, int64_t totalBytes))process
            callback:(void(^)(NSData *data))callback
 {
     if(!url || !url.length){
@@ -188,7 +188,7 @@ ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 
 + (void)imageWithURL:(NSString *)url
             identify:(NSString *)identify
-             process:(void (^)(long readBytes, long totalBytes))process
+             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
             callback:(void(^)(UIImage *image))callback
 {
     [NSData dataWithURL:url identify:identify process:process callback:^(NSData *data) {
@@ -875,13 +875,13 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
         NSString *filePath = [NSData diskCachePathWithURL:_downloadingUrl];
         [NSData directoryExistsAtPath:filePath];
         
-        void(^processBlock)(long, long) = ^(long readBytes, long totalBytes)
+        void(^processBlock)(int64_t, int64_t) = ^(int64_t readBytes, int64_t totalBytes)
         {
             NSArray *urlArray = _urlClassify[_downloadingUrl];
             if(urlArray && urlArray.count){
                 for (NSString *uniqueId in urlArray) {
                     if (_operationClassify[uniqueId]) {
-                        void(^processBlock)(long, long) = _operationClassify[uniqueId][@"process"];
+                        void(^processBlock)(int64_t, int64_t) = _operationClassify[uniqueId][@"process"];
                         processBlock?processBlock(readBytes,totalBytes):nil;
                     }
                 }

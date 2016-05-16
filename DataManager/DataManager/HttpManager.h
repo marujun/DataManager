@@ -49,7 +49,7 @@
  @property
  @brief  所有请求操作的管理器
  */
-@property(nonatomic, strong) AFHTTPRequestOperationManager *operationManager;
+@property(nonatomic, strong, readonly) AFHTTPSessionManager *sessionManager;
 
 + (instancetype)defaultManager;
 
@@ -65,7 +65,7 @@
 //AFHTTPRequestOperation可以暂停、重新开启、取消 [operation pause]、[operation resume]、[operation cancel];
 
 /** GET 请求 */
-- (AFHTTPRequestOperation *)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+- (NSURLSessionDataTask *)getRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 /** 读取本地缓存数据 */
 - (void)localCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
@@ -74,13 +74,13 @@
 - (void)updateLocalCacheToUrl:(NSString *)url params:(NSDictionary *)params keyPath:(NSString *)keyPath value:(id)value;
 
 /** GET 请求并添加到缓存，未联网时使用缓存数据 */
-- (AFHTTPRequestOperation *)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+- (NSURLSessionDataTask *)getCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 /** POST 请求 */
-- (AFHTTPRequestOperation *)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+- (NSURLSessionDataTask *)postRequestToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 /** POST 请求并添加到缓存，未联网时使用缓存数据 */
-- (AFHTTPRequestOperation *)postCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
+- (NSURLSessionDataTask *)postCacheToUrl:(NSString *)url params:(NSDictionary *)params complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 /*
  files : 需要上传的文件数组，数组里为多个字典
@@ -91,31 +91,31 @@
  4、type: 文件类型（默认：image/jpeg）
  示例： @[@{@"file":_headImg.currentBackgroundImage,@"name":@"head.jpg"}];
  */
-- (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
+- (NSURLSessionUploadTask *)uploadToUrl:(NSString *)url
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
                                complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 
 //可以查看进度 process_block
-- (AFHTTPRequestOperation *)uploadToUrl:(NSString *)url
+- (NSURLSessionUploadTask *)uploadToUrl:(NSString *)url
                                  params:(NSDictionary *)params
                                   files:(NSArray *)files
-                                process:(void (^)(long writedBytes, long totalBytes))process
+                                process:(void (^)(int64_t writedBytes, int64_t totalBytes))process
                                complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 /**
  filePath : 下载文件的存储路径
  response : 接口返回的不是文件而是json数据
  process  : 进度
  */
-- (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
+- (NSURLSessionDownloadTask *)downloadFromUrl:(NSString *)url
                                    filePath:(NSString *)filePath
                                    complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
-- (AFHTTPRequestOperation *)downloadFromUrl:(NSString *)url
+- (NSURLSessionDownloadTask *)downloadFromUrl:(NSString *)url
                                      params:(NSDictionary *)params
                                    filePath:(NSString *)filePath
-                                    process:(void (^)(long readBytes, long totalBytes))process
+                                    process:(void (^)(int64_t readBytes, int64_t totalBytes))process
                                    complete:(void (^)(BOOL successed, HttpResponse *response))complete;
 
 @end
