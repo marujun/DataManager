@@ -42,7 +42,7 @@
     
     //设置UIButton的图片，下载失败则使用默认图片
     UIButton *button = [[UIButton alloc] initWithFrame:self.view.bounds];
-    [button setImageURL:url forState:UIControlStateNormal defaultImage:[UIImage imageNamed:@"default.jpg"]];
+    [button setImageWithURL:url forState:UIControlStateNormal placeholderImage:[UIImage imageNamed:@"default.jpg"]];
     [self.view addSubview:button];
 }
 

@@ -536,11 +536,13 @@
     void (^progressHandler)(NSProgress *) = ^(NSProgress * _Nonnull uploadProgress) {
         // This is not called back on the main queue.
         // You are responsible for dispatching to the main queue for UI updates
-        dispatch_async(dispatch_get_main_queue(), ^{
-            float progress = uploadProgress.completedUnitCount*1.f / uploadProgress.totalUnitCount;
-            NSLog(@"upload process: %.0f%% (%@/%@)",100*progress,@(uploadProgress.completedUnitCount),@(uploadProgress.totalUnitCount));
-            if (process) process(uploadProgress.completedUnitCount, uploadProgress.totalUnitCount);
-        });
+        if (uploadProgress.totalUnitCount > 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                float progress = uploadProgress.completedUnitCount*1.f / uploadProgress.totalUnitCount;
+                NSLog(@"upload process: %.0f%% (%@/%@)",100*progress,@(uploadProgress.completedUnitCount),@(uploadProgress.totalUnitCount));
+                if (process) process(uploadProgress.completedUnitCount, uploadProgress.totalUnitCount);
+            });
+        }
     };
     
     void (^completionHandler)(NSURLResponse *, id, NSError *) = ^(NSURLResponse *response, id responseObject, NSError *error) {
@@ -616,14 +618,16 @@
     NSURLSessionDownloadTask *downloadTask;
     NSString *tmpPath = [filePath stringByAppendingString:@".tmp"];
     
-    void (^progressHandler)(NSProgress *) = ^(NSProgress * _Nonnull uploadProgress) {
+    void (^progressHandler)(NSProgress *) = ^(NSProgress * _Nonnull downloadProgress) {
         // This is not called back on the main queue.
         // You are responsible for dispatching to the main queue for UI updates
-        dispatch_async(dispatch_get_main_queue(), ^{
-            float progress = uploadProgress.completedUnitCount*1.f / uploadProgress.totalUnitCount;
-            NSLog(@"download process: %.0f%% (%@/%@)",100*progress,@(uploadProgress.completedUnitCount),@(uploadProgress.totalUnitCount));
-            if (process) process(uploadProgress.completedUnitCount, uploadProgress.totalUnitCount);
-        });
+        if (downloadProgress.totalUnitCount > 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                float progress = downloadProgress.completedUnitCount*1.f / downloadProgress.totalUnitCount;
+                NSLog(@"download process: %.0f%% (%@/%@)",100*progress,@(downloadProgress.completedUnitCount),@(downloadProgress.totalUnitCount));
+                if (process) process(downloadProgress.completedUnitCount, downloadProgress.totalUnitCount);
+            });
+        }
     };
     
     NSURL *(^destination)(NSURL *, NSURLResponse *) = ^NSURL * (NSURL *targetPath, NSURLResponse *response) {

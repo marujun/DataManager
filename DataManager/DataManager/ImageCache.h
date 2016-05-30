@@ -49,16 +49,16 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
  2、下载完成之后会执行回调，并可查看下载进度
  ********************----------******************************/
 
-+ (void)dataWithURL:(NSString *)url callback:(void(^)(NSData *data))callback;
++ (void)dataWithURL:(NSString *)url completed:(void(^)(NSData *data))completed;
 
 + (void)dataWithURL:(NSString *)url
            identify:(NSString *)identify
-           callback:(void(^)(NSData *data))callback;
+          completed:(void(^)(NSData *data))completed;
 
 + (void)dataWithURL:(NSString *)url
            identify:(NSString *)identify
             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
-           callback:(void(^)(NSData *data))callback;
+          completed:(void(^)(NSData *data))completed;
 
 /** 通过URL获取缓存文件在本地对应的路径 */
 + (NSString *)diskCachePathWithURL:(NSString *)url;
@@ -66,33 +66,30 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 /** 缓存文件对应的文件夹 */
 + (NSString *)diskCacheDirectory;
 
+/** 获取图片的类型 */
++ (NSString *)contentTypeForImageData:(NSData *)data;
+
 @end
 
 @interface UIImage (ImageCache)
 @property(nonatomic, strong) NSString *cache_url;
 @property(nonatomic, strong) NSNumber *disk_exist;
 
-/** 内存里缓存图片占用的空间大小,单位为:Bytes */
-+ (NSUInteger)memoryCacheSizeInBytes;
-
-/** 清除掉内存里缓存图片 */
-+ (void)cleanMemoryCache;
-
 /* ********************----------*****************************
  1、UIImage 的扩展方法，用于缓存图片；如果图片已下载则使用本地图片
  2、下载完成之后会执行回调，并可查看下载进度
  ********************----------******************************/
 
-+ (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback;
++ (void)imageWithURL:(NSString *)url completed:(void(^)(UIImage *image))completed;
 
 + (void)imageWithURL:(NSString *)url
             identify:(NSString *)identify
-            callback:(void(^)(UIImage *image))callback;
+           completed:(void(^)(UIImage *image))completed;
 
 + (void)imageWithURL:(NSString *)url
             identify:(NSString *)identify
              process:(void (^)(int64_t readBytes, int64_t totalBytes))process
-            callback:(void(^)(UIImage *image))callback;
+           completed:(void(^)(UIImage *image))completed;
 
 /** 通过URL获取缓存图片在本地对应的路径 */
 + (NSString *)diskCachePathWithURL:(NSString *)url;
@@ -110,16 +107,16 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 @property(nonatomic, strong) NSString *cache_identify;
 
 /** 设置UIImageView的图片的URL,下载失败设置图片为空 */
-- (void)setImageURL:(NSString *)url;
+- (void)setImageWithURL:(NSString *)url;
 
 /** 设置UIImageView的图片的URL,下载失败则使用默认图片设置 */
-- (void)setImageURL:(NSString *)url defaultImage:(UIImage *)defaultImage;
+- (void)setImageWithURL:(NSString *)url placeholderImage:(UIImage *)placeholder;
 
 /** 设置UIImageView的图片的URL,下载完成之后先设置图片然后执行回调函数 */
-- (void)setImageURL:(NSString *)url callback:(void(^)(UIImage *image))callback;
+- (void)setImageWithURL:(NSString *)url completed:(void(^)(UIImage *image))completed;
 
 /** 设置UIImageView的图片的URL,下载完成之后先设置图片然后执行回调函数,可指定该视图对应ViewController ID */
-- (void)setImageURL:(NSString *)url identify:(NSString *)identify callback:(void(^)(UIImage *image))callback;
+- (void)setImageWithURL:(NSString *)url identify:(NSString *)identify completed:(void(^)(UIImage *image))completed;
 
 @end
 
@@ -128,28 +125,28 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 @property(nonatomic, strong) NSString *cache_identify;
 
 /** 设置按钮的图片的URL,下载失败设置图片为空 */
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state;
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state;
 
 /** 设置按钮的图片的URL,下载失败则使用默认图片设置 */
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage;
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder;
 
 /** 设置按钮的图片的URL,下载完成之后先设置图片然后执行回调函数 */
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback;
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state completed:(void(^)(UIImage *image))completed;
 
 /** 设置按钮的图片的URL,下载完成之后先设置图片然后执行回调函数,可指定该视图对应ViewController ID */
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify callback:(void(^)(UIImage *image))callback;
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify completed:(void(^)(UIImage *image))completed;
 
 /** 设置按钮的背景图片的URL,下载失败设置图片为空 */
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state;
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state;
 
 /** 设置按钮的背景图片的URL,下载失败则使用默认图片设置 */
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage;
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder;
 
 /** 设置按钮的背景图片的URL,下载完成之后先设置图片然后执行回调函数 */
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback;
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state completed:(void(^)(UIImage *image))completed;
 
 /** 设置按钮的背景图片的URL,下载完成之后先设置图片然后执行回调函数,可指定该视图对应ViewController ID */
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify callback:(void(^)(UIImage *image))callback;
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify completed:(void(^)(UIImage *image))completed;
 
 @end
 
@@ -169,6 +166,7 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC), 
 
 @property (strong, nonatomic, readonly) NSString *downloadingUrl;
 @property (strong, nonatomic, readonly) NSURLSessionDownloadTask *requestOperation;
+@property (strong, nonatomic, readonly) NSCache *imageMemoryCache;
 
 + (instancetype)defaultManager;
 

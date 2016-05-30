@@ -10,7 +10,41 @@
 #import "HttpManager.h"
 #import <ImageIO/ImageIO.h>
 
+@interface UIWindow (ImageCache)
+
+- (UIViewController *) visibleViewController;
+
+@end
+
+@implementation UIWindow (ImageCache)
+
+- (UIViewController *)visibleViewController {
+    UIViewController *rootViewController = self.rootViewController;
+    return [UIWindow getVisibleViewControllerFrom:rootViewController];
+}
+
++ (UIViewController *) getVisibleViewControllerFrom:(UIViewController *) vc {
+    if ([vc isKindOfClass:[UINavigationController class]]) {
+        return [UIWindow getVisibleViewControllerFrom:[((UINavigationController *) vc) topViewController]];
+    } else if ([vc isKindOfClass:[UITabBarController class]]) {
+        return [UIWindow getVisibleViewControllerFrom:[((UITabBarController *) vc) selectedViewController]];
+    } else {
+        if (vc.presentedViewController) {
+            return [UIWindow getVisibleViewControllerFrom:vc.presentedViewController];
+        } else {
+            if (vc.childViewControllers.count) {
+                return [UIWindow getVisibleViewControllerFrom:[vc.childViewControllers lastObject]];
+            }
+            return vc;
+        }
+    }
+}
+
+@end
+
 #define  FadeAnimationKey   @"image_cache_fade_animation"
+
+static const NSString *TemporaryIdentify = @"TemporaryIdentify";
 
 @interface ImageCacheManager ()
 
@@ -39,25 +73,25 @@
 @implementation NSData (ImageCache)
 ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 
-+ (void)dataWithURL:(NSString *)url callback:(void(^)(NSData *data))callback
++ (void)dataWithURL:(NSString *)url completed:(void(^)(NSData *data))completed
 {
-    [self dataWithURL:url identify:nil callback:callback];
+    [self dataWithURL:url identify:nil completed:completed];
 }
 
 + (void)dataWithURL:(NSString *)url
            identify:(NSString *)identify
-           callback:(void(^)(NSData *data))callback
+          completed:(void(^)(NSData *data))completed
 {
-    [self dataWithURL:url identify:identify process:nil callback:callback];
+    [self dataWithURL:url identify:identify process:nil completed:completed];
 }
 
 + (void)dataWithURL:(NSString *)url
            identify:(NSString *)identify
             process:(void (^)(int64_t readBytes, int64_t totalBytes))process
-           callback:(void(^)(NSData *data))callback
+          completed:(void(^)(NSData *data))completed
 {
     if(!url || !url.length){
-        callback ? callback(nil) : nil;
+        completed ? completed(nil) : nil;
         return;
     }
     
@@ -70,13 +104,13 @@ ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
     if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         NSData *data = [NSData dataWithContentsOfFile:filePath];
         data.disk_exist = @(YES);
-        callback ? callback(data) : nil;
+        completed ? completed(data) : nil;
     }else{
         //添加到下载列表里
         NSMutableDictionary *operation = [[NSMutableDictionary alloc] init];
         [operation setValue:url forKey:@"url"];
         [operation setValue:process forKey:@"process"];
-        [operation setValue:callback forKey:@"callback"];
+        [operation setValue:completed forKey:@"completed"];
         
         [[ImageCacheManager defaultManager] addOperation:operation identify:identify];
     }
@@ -154,49 +188,33 @@ ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 
 @end
 
-#define ImageMemoryCacheSizeKey @"ImageMemoryCacheSizeKey"
-
-static NSMutableDictionary *memoryCacheImageDictionary;
-
 @implementation UIImage (ImageCache)
 ADD_DYNAMIC_PROPERTY(NSString *,cache_url,setCache_url);
 ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 
-+ (void)cleanMemoryCache
++ (void)imageWithURL:(NSString *)url completed:(void(^)(UIImage *image))completed
 {
-    @synchronized(memoryCacheImageDictionary) {
-        [memoryCacheImageDictionary removeAllObjects];
-    }
-}
-
-+ (NSUInteger)memoryCacheSizeInBytes
-{
-    return [memoryCacheImageDictionary[ImageMemoryCacheSizeKey] unsignedIntegerValue];
-}
-
-+ (void)imageWithURL:(NSString *)url callback:(void(^)(UIImage *image))callback
-{
-    [self imageWithURL:url identify:nil callback:callback];
+    [self imageWithURL:url identify:nil completed:completed];
 }
 
 + (void)imageWithURL:(NSString *)url
             identify:(NSString *)identify
-            callback:(void(^)(UIImage *image))callback
+           completed:(void(^)(UIImage *image))completed
 {
-    [self imageWithURL:url identify:identify process:nil callback:callback];
+    [self imageWithURL:url identify:identify process:nil completed:completed];
 }
 
 + (void)imageWithURL:(NSString *)url
             identify:(NSString *)identify
              process:(void (^)(int64_t readBytes, int64_t totalBytes))process
-            callback:(void(^)(UIImage *image))callback
+           completed:(void(^)(UIImage *image))completed
 {
-    [NSData dataWithURL:url identify:identify process:process callback:^(NSData *data) {
+    [NSData dataWithURL:url identify:identify process:process completed:^(NSData *data) {
         UIImage *lastImage = nil;
         NSString *contentType = [NSData contentTypeForImageData:data];
         if (contentType && [contentType isEqualToString:@"image/gif"]) {
             lastImage = [UIImage animatedGIFWithData:data];
-        } else{
+        } else {
             lastImage = [UIImage imageWithData:data];
         }
         lastImage.disk_exist = data.disk_exist;
@@ -204,24 +222,14 @@ ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
         if (lastImage) {
             lastImage.cache_url = url;
             
-            //内存里只缓存小于60K的图片
-            if (data.length < 60*1024) {
-                @synchronized(memoryCacheImageDictionary) {
-                    if (!memoryCacheImageDictionary) {
-                        memoryCacheImageDictionary = [NSMutableDictionary dictionary];
-                    }
-                    [memoryCacheImageDictionary setObject:lastImage forKey:url];
-                    
-                    NSUInteger size = [memoryCacheImageDictionary[ImageMemoryCacheSizeKey] unsignedIntegerValue];
-                    [memoryCacheImageDictionary setObject:@(size+data.length) forKey:ImageMemoryCacheSizeKey];
-                }
-            }
-        } else if(data) {
+            [[ImageCacheManager defaultManager].imageMemoryCache setObject:lastImage forKey:url cost:data.length];
+        }
+        else if(data) {
             NSString *filePath = [NSData diskCachePathWithURL:url];
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         }
         
-        callback?callback(lastImage):nil;
+        completed?completed(lastImage):nil;
     }];
 }
 
@@ -326,41 +334,44 @@ ADD_DYNAMIC_PROPERTY(NSNumber *,disk_exist,setDisk_exist);
 ADD_DYNAMIC_PROPERTY(NSString *,cache_url,setCache_url);
 ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 
-- (void)setImageURL:(NSString *)url
+- (void)setImageWithURL:(NSString *)url
 {
-    [self setImageURL:url callback:nil];
+    [self setImageWithURL:url completed:nil];
 }
-- (void)setImageURL:(NSString *)url defaultImage:(UIImage *)defaultImage
+- (void)setImageWithURL:(NSString *)url placeholderImage:(UIImage *)placeholder
 {
-    self.image = defaultImage;
+    self.image = placeholder;
     
-    [self setImageURL:url callback:nil];
+    [self setImageWithURL:url completed:nil];
 }
-- (void)setImageURL:(NSString *)url callback:(void(^)(UIImage *image))callback
+- (void)setImageWithURL:(NSString *)url completed:(void(^)(UIImage *image))completed
 {
-    [self setImageURL:url identify:nil callback:callback];
+    [self setImageWithURL:url identify:nil completed:completed];
 }
-- (void)setImageURL:(NSString *)url identify:(NSString *)identify callback:(void(^)(UIImage *image))callback
+- (void)setImageWithURL:(NSString *)url identify:(NSString *)identify completed:(void(^)(UIImage *image))completed
 {
     self.cache_url = url;
+    if (!url) return;
     
-    if(url && memoryCacheImageDictionary[url]){
+    NSCache *imageCache = [ImageCacheManager defaultManager].imageMemoryCache;
+    if ([imageCache objectForKey:url]) {
         [self.layer removeAnimationForKey:FadeAnimationKey];
-        self.image = memoryCacheImageDictionary[url];
-        callback ? callback(self.image) : nil;
+        self.image = [imageCache objectForKey:url];
+        completed ? completed(self.image) : nil;
         return;
     }
     
     if(identify && identify.length) {
         self.cache_identify = identify;
     } else {
-        if (!self.cache_identify || [self.cache_identify isEqualToString:ImageCacheIdentifyDefault]) {
+        BOOL isTemporary = [objc_getAssociatedObject(self, &TemporaryIdentify) boolValue];
+        if (!self.cache_identify || isTemporary) {
             self.cache_identify = [ImageCacheManager identifyOfView:self];
         }
     }
     
     __weak __typeof(self)wself = self;
-    [UIImage imageWithURL:url identify:self.cache_identify process:nil callback:^(UIImage *image) {
+    [UIImage imageWithURL:url identify:self.cache_identify process:nil completed:^(UIImage *image) {
         if (!wself) return;
         dispatch_main_sync_safe(^{
             __strong UIImageView *sself = wself;
@@ -378,7 +389,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
                     [sself.layer addAnimation:transition forKey:FadeAnimationKey];
                 }
                 
-                callback ? callback(image) : nil;
+                completed ? completed(image) : nil;
             }
         });
     }];
@@ -390,43 +401,46 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 ADD_DYNAMIC_PROPERTY(NSString *,cache_url,setCache_url);
 ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state
 {
-    [self setImageURL:url forState:state defaultImage:nil];
+    [self setImageWithURL:url forState:state placeholderImage:nil];
 }
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder
 {
-    [self setImage:defaultImage forState:state];
+    [self setImage:placeholder forState:state];
     
-    [self setImageURL:url forState:state callback:nil];
+    [self setImageWithURL:url forState:state completed:nil];
 }
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state completed:(void(^)(UIImage *image))completed
 {
     self.cache_url = url;
     
-    [self setImageURL:url forState:state identify:nil callback:callback];
+    [self setImageWithURL:url forState:state identify:nil completed:completed];
 }
-- (void)setImageURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify callback:(void(^)(UIImage *image))callback
+- (void)setImageWithURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify completed:(void(^)(UIImage *image))completed
 {
     self.cache_url = url;
+    if (!url) return;
     
-    if(url && memoryCacheImageDictionary[url]){
+    NSCache *imageCache = [ImageCacheManager defaultManager].imageMemoryCache;
+    if ([imageCache objectForKey:url]) {
         [self.layer removeAnimationForKey:FadeAnimationKey];
-        [self setImage:memoryCacheImageDictionary[url] forState:state];
-        callback ? callback([self imageForState:state]) : nil;
+        [self setImage:[imageCache objectForKey:url] forState:state];
+        completed ? completed([self imageForState:state]) : nil;
         return;
     }
     
     if(identify && identify.length) {
         self.cache_identify = identify;
     } else {
-        if (!self.cache_identify || [self.cache_identify isEqualToString:ImageCacheIdentifyDefault]) {
+        BOOL isTemporary = [objc_getAssociatedObject(self, &TemporaryIdentify) boolValue];
+        if (!self.cache_identify || isTemporary) {
             self.cache_identify = [ImageCacheManager identifyOfView:self];
         }
     }
     
     __weak __typeof(self)wself = self;
-    [UIImage imageWithURL:url identify:self.cache_identify process:nil callback:^(UIImage *image) {
+    [UIImage imageWithURL:url identify:self.cache_identify process:nil completed:^(UIImage *image) {
         if (!wself) return;
         dispatch_main_sync_safe(^{
             __strong UIButton *sself = wself;
@@ -444,48 +458,51 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
                     [sself.layer addAnimation:transition forKey:FadeAnimationKey];
                 }
                 
-                callback ? callback(image) : nil;
+                completed ? completed(image) : nil;
             }
         });
     }];
 }
 
 
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state
 {
-    [self setBackgroundImageURL:url forState:state defaultImage:nil];
+    [self setBackgroundImageWithURL:url forState:state placeholderImage:nil];
 }
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state defaultImage:(UIImage *)defaultImage
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder
 {
-    [self setBackgroundImage:defaultImage forState:state];
+    [self setBackgroundImage:placeholder forState:state];
     
-    [self setBackgroundImageURL:url forState:state callback:nil];
+    [self setBackgroundImageWithURL:url forState:state completed:nil];
 }
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state callback:(void(^)(UIImage *image))callback
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state completed:(void(^)(UIImage *image))completed
 {
-    [self setBackgroundImageURL:url forState:state identify:nil callback:callback];
+    [self setBackgroundImageWithURL:url forState:state identify:nil completed:completed];
 }
-- (void)setBackgroundImageURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify callback:(void(^)(UIImage *image))callback
+- (void)setBackgroundImageWithURL:(NSString *)url forState:(UIControlState)state identify:(NSString *)identify completed:(void(^)(UIImage *image))completed
 {
     self.cache_url = url;
+    if (!url) return;
     
-    if(url && memoryCacheImageDictionary[url]){
+    NSCache *imageCache = [ImageCacheManager defaultManager].imageMemoryCache;
+    if ([imageCache objectForKey:url]) {
         [self.layer removeAnimationForKey:FadeAnimationKey];
-        [self setBackgroundImage:memoryCacheImageDictionary[url] forState:state];
-        callback ? callback([self backgroundImageForState:state]) : nil;
+        [self setBackgroundImage:[imageCache objectForKey:url] forState:state];
+        completed ? completed([self backgroundImageForState:state]) : nil;
         return;
     }
     
     if(identify && identify.length) {
         self.cache_identify = identify;
     } else {
-        if (!self.cache_identify || [self.cache_identify isEqualToString:ImageCacheIdentifyDefault]) {
+        BOOL isTemporary = [objc_getAssociatedObject(self, &TemporaryIdentify) boolValue];
+        if (!self.cache_identify || isTemporary) {
             self.cache_identify = [ImageCacheManager identifyOfView:self];
         }
     }
     
     __weak __typeof(self)wself = self;
-    [UIImage imageWithURL:url identify:self.cache_identify process:nil callback:^(UIImage *image) {
+    [UIImage imageWithURL:url identify:self.cache_identify process:nil completed:^(UIImage *image) {
         if (!wself) return;
         dispatch_main_sync_safe(^{
             __strong UIButton *sself = wself;
@@ -503,7 +520,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
                     [sself.layer addAnimation:transition forKey:FadeAnimationKey];
                 }
                 
-                callback ? callback(image) : nil;
+                completed ? completed(image) : nil;
             }
         });
     }];
@@ -593,6 +610,10 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
         _visitDateDictionary = [[NSMutableDictionary alloc] initWithContentsOfFile:_visitPlistPath];
         _visitDateDictionary = _visitDateDictionary?:[[NSMutableDictionary alloc] init];
         
+        _imageMemoryCache = [[NSCache alloc] init];
+        _imageMemoryCache.countLimit = 100;   //最多缓存100张照片
+        _imageMemoryCache.totalCostLimit = 20*1024*1024; //内存缓存最大20M
+        
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(appDidReceiveMemoryWarningNotification)
                                                      name:UIApplicationDidReceiveMemoryWarningNotification
@@ -611,8 +632,6 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
 
 - (void)appDidReceiveMemoryWarningNotification
 {
-    [UIImage cleanMemoryCache];
-    
     NSLog(@"已清除内存中缓存的图片！！！");
 }
 
@@ -632,9 +651,18 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
         return ImageCacheIdentifyDefault;
     }
     
-    UIViewController *nearsetVC = view.nearsetViewController;
+    UIViewController *nearsetVC = [view nearsetViewController];
     if (nearsetVC){
+        objc_setAssociatedObject(view, &TemporaryIdentify, @(NO), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        
         return NSStringFromClass([nearsetVC class]);
+    }
+    
+    objc_setAssociatedObject(view, &TemporaryIdentify, @(YES), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    
+    UIViewController *visibleVC = [[[[UIApplication sharedApplication] delegate] window] visibleViewController];
+    if (visibleVC) {
+        return NSStringFromClass([visibleVC class]);
     }
     
     return ImageCacheIdentifyDefault;
@@ -762,8 +790,8 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
     
     @synchronized(_identifyQueue){
         
-//        //取消当前正在下载的任务
-//        [_requestOperation cancel];
+        //        //取消当前正在下载的任务
+        //        [_requestOperation cancel];
         
         [_identifyQueue removeObject:ImageCacheIdentifyImprove];
         [_identifyQueue insertObject:ImageCacheIdentifyImprove atIndex:0];
@@ -773,7 +801,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
             targetArray = [NSMutableArray array];
             [_identifyClassify setObject:targetArray forKey:ImageCacheIdentifyImprove];
         }
-
+        
         NSMutableArray *uniqueIdArray = _urlClassify[url];
         if(uniqueIdArray && uniqueIdArray.count){
             for (NSString *uniqueId in uniqueIdArray) {
@@ -794,8 +822,8 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
     
     @synchronized(_identifyQueue){
         
-//        //取消当前正在下载的任务
-//        [_requestOperation cancel];
+        //        //取消当前正在下载的任务
+        //        [_requestOperation cancel];
         
         [_identifyQueue removeObject:ImageCacheIdentifyImprove];
         [_identifyQueue insertObject:ImageCacheIdentifyImprove atIndex:0];
@@ -827,7 +855,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
     if(!url || !url.length){
         return;
     }
-
+    
     @synchronized(_identifyQueue){
         if (_downloadingUrl && [url isEqualToString:_downloadingUrl]) {
             [_requestOperation cancel];
@@ -840,7 +868,7 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
             }
         }
         [_urlClassify removeObjectForKey:url];
-
+        
         [self startDownload];
     }
 }
@@ -905,8 +933,8 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
                 if (resError.code==NSURLErrorBadServerResponse && [resError.localizedDescription hasSuffix:@"(404)"] && !isThumbnail) {
                     fileExist = NO;
                     
-                    lastData = [NSData dataWithContentsOfFile:[ResourcePath stringByAppendingPathComponent:@"pub_default_not_exist.png"]];
-                    [lastData writeToFile:filePath atomically:true];
+                    //                    lastData = [NSData dataWithContentsOfFile:[ResourcePath stringByAppendingPathComponent:@"pub_default_not_exist.png"]];
+                    //                    [lastData writeToFile:filePath atomically:true];
                 }
                 
                 if (!_requestOperation || !resError || resError.code != NSURLErrorCancelled || !fileExist) {
@@ -922,8 +950,8 @@ ADD_DYNAMIC_PROPERTY(NSString *,cache_identify,setCache_identify);
                     if(uniqueIdArray && uniqueIdArray.count){
                         for (NSString *uniqueId in uniqueIdArray) {
                             if (_operationClassify[uniqueId]) {
-                                void(^callbackBlock)(NSData *) = _operationClassify[uniqueId][@"callback"];
-                                callbackBlock?callbackBlock(lastData):nil;
+                                void(^completedHandler)(NSData *) = _operationClassify[uniqueId][@"completed"];
+                                completedHandler?completedHandler(lastData):nil;
                                 
                                 [_operationClassify removeObjectForKey:uniqueId];
                             }

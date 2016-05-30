@@ -282,6 +282,7 @@
             transitionFrame = CGRectMake(0, bounds.size.height, bounds.size.width, bounds.size.height);
             break;
         default:
+            transitionFrame = bounds;
             break;
     }
     
